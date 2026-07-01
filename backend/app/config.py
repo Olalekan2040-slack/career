@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     stripe_price_usd_cents: int = 100
 
     paystack_secret_key: str = ""
+    paystack_public_key: str = ""
     paystack_amount_kobo: int = 150000
 
     consultation_booking_url: str = "https://calendly.com/your-handle/consultation"
