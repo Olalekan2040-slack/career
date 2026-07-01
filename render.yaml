@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: career-assessment-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: FRONTEND_URL
+        value: https://career-assessment-frontend.onrender.com
+      - key: DATABASE_URL
+        value: sqlite:///./assessment.db
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_APP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: Global Digital Skills Assessment
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_USD_CENTS
+        value: 100
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_AMOUNT_KOBO
+        value: 150000
+      - key: CONSULTATION_BOOKING_URL
+        sync: false
+      - key: PORTFOLIO_URL
+        value: https://quaddev.onrender.com/
+
+  - type: web
+    name: career-assessment-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://career-assessment-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -95,6 +95,37 @@ test (or live) keys before going live; no code changes are needed.
 - **$1 unlock (Stripe/Paystack)**: still available for anonymous users who'd
   rather pay once than create an account — unchanged from the original flow.
 
+## Deploying to Render
+
+The repo includes a `render.yaml` Blueprint that provisions both services in one go:
+
+1. Push this repo to GitHub (already done: `github.com/Olalekan2040-slack/career`).
+2. In the [Render Dashboard](https://dashboard.render.com/), click **New +** → **Blueprint**, and connect the `career` repo.
+3. Render reads `render.yaml` and creates two services:
+   - `career-assessment-backend` — FastAPI, free web service
+   - `career-assessment-frontend` — static site (Vite build), free
+4. Render will prompt you to fill in the env vars marked `sync: false` (secrets it won't
+   auto-generate): `SMTP_USER`, `SMTP_APP_PASSWORD`, `STRIPE_SECRET_KEY`,
+   `STRIPE_WEBHOOK_SECRET`, `PAYSTACK_SECRET_KEY`, `CONSULTATION_BOOKING_URL`.
+5. After the first deploy, confirm the actual URLs Render assigned (it may append a
+   suffix if the exact name is taken). If either differs from the predicted
+   `career-assessment-backend.onrender.com` / `career-assessment-frontend.onrender.com`,
+   update `FRONTEND_URL` (backend service) and `VITE_API_URL` (frontend service) env
+   vars to match, then redeploy.
+6. Once you have real Stripe/Paystack keys, add your backend's webhook URLs in each
+   provider's dashboard:
+   - Stripe: `https://<your-backend-url>/api/webhooks/stripe`
+   - Paystack: `https://<your-backend-url>/api/webhooks/paystack`
+
+**Known limitations of this setup** (accepted for now, revisit before real launch):
+- Render's free web services use an **ephemeral filesystem** — the SQLite database
+  file is wiped on every deploy or restart, so leads/results/payments data does not
+  persist across deploys. Fine for early testing; before handling real users, either
+  attach a Render persistent disk or migrate `DATABASE_URL` to a managed Postgres
+  (the app already uses SQLAlchemy, so this is a config change, not a rewrite).
+- Free web services spin down after ~15 minutes of inactivity and cold-start slowly
+  on the next request — expect a delay on the first hit after idle periods.
+
 ## What's implemented (Phase 1 per PRD Section 9)
 
 - Full assessment engine scoring all 24 categories from day one (Orientation
