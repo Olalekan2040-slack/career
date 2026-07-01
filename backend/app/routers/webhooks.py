@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..config import settings
-from ..data.categories import get_category
 from ..database import get_db
-from ..email_service import render_paid_tier_email, send_email
+from ..email_service import render_recommendations_email, send_email
 from ..payments import verify_paystack_signature, verify_stripe_webhook
+from ..result_builder import build_result_out
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
@@ -19,16 +19,18 @@ def _unlock_result_and_notify(db: Session, result: models.Result) -> None:
     db.commit()
 
     lead = result.response.lead
-    primary = get_category(result.primary_category)
-    secondary = get_category(result.secondary_category)
 
     try:
-        html = render_paid_tier_email(lead.name, primary, secondary, settings.consultation_booking_url)
+        result_out = build_result_out(result, force_unlock=True)
+        result_url = f"{settings.frontend_url}/results/{result.id}"
+        html = render_recommendations_email(
+            lead.name, result_out["recommendations"], True, result_url, settings.consultation_booking_url
+        )
         send_email(lead.email, "Your full Digital Career roadmap is unlocked 🔓", html)
         result.paid_email_sent = True
         db.commit()
     except Exception as exc:  # pragma: no cover - best-effort email delivery
-        print(f"[webhooks] failed to send paid-tier email: {exc}")
+        print(f"[webhooks] failed to send unlock email: {exc}")
 
 
 @router.post("/stripe")

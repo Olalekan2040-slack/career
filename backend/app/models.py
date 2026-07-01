@@ -63,12 +63,9 @@ class Result(Base):
 
     id = Column(String, primary_key=True, default=gen_id)
     response_id = Column(String, ForeignKey("assessment_responses.id"), nullable=False)
-    primary_category = Column(String, nullable=False)
-    secondary_category = Column(String, nullable=False)
-    scores = Column(JSON, nullable=False)
-    track = Column(String, nullable=False)
+    recommendations = Column(JSON, nullable=False)  # ranked list of {career_key, score, reason}
     close_call = Column(Boolean, default=False)
-    unlocked = Column(Boolean, default=False)
+    unlocked = Column(Boolean, default=False)  # True = 4 recommendations visible, False = 2
     free_email_sent = Column(Boolean, default=False)
     paid_email_sent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -103,14 +100,3 @@ class Consultation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     lead = relationship("Lead", back_populates="consultations")
-
-
-class WaitlistEntry(Base):
-    """Tracks users waiting on a not-yet-launched category's curriculum (Phase 2/3)."""
-
-    __tablename__ = "waitlist_entries"
-
-    id = Column(String, primary_key=True, default=gen_id)
-    email = Column(String, nullable=False, index=True)
-    category_key = Column(String, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)

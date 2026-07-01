@@ -36,11 +36,9 @@ export const api = {
   getDashboardResults: () => request('/api/dashboard/results'),
   createLead: (payload) => request('/api/leads', { method: 'POST', body: JSON.stringify(payload) }),
   getQuestions: () => request('/api/questions'),
-  routeTrack: (orientationAnswers) => request('/api/questions/route', { method: 'POST', body: JSON.stringify(orientationAnswers) }),
   submitAssessment: (payload) => request('/api/submit', { method: 'POST', body: JSON.stringify(payload) }),
   getResult: (resultId) => request(`/api/result/${resultId}`),
   checkoutStripe: (resultId) => request('/api/checkout/stripe', { method: 'POST', body: JSON.stringify({ result_id: resultId }) }),
   checkoutPaystack: (resultId) => request('/api/checkout/paystack', { method: 'POST', body: JSON.stringify({ result_id: resultId }) }),
   bookConsultation: (payload) => request('/api/consultation', { method: 'POST', body: JSON.stringify(payload) }),
-  joinWaitlist: (payload) => request('/api/waitlist', { method: 'POST', body: JSON.stringify(payload) }),
 };

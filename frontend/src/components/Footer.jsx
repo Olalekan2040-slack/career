@@ -1,3 +1,5 @@
+import profilePhoto from '../assets/profile.jpg';
+
 export default function Footer() {
   return (
     <footer
@@ -9,6 +11,18 @@ export default function Footer() {
       }}
     >
       <div className="container" style={{ textAlign: 'center' }}>
+        <img
+          src={profilePhoto}
+          alt="Sharafdeen Quadri Olalekan"
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: '50%',
+            objectFit: 'cover',
+            border: '2px solid var(--milk-border)',
+            marginBottom: 10,
+          }}
+        />
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>Built with care by</p>
         <p style={{ margin: '4px 0', fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>
           Sharafdeen Quadri Olalekan

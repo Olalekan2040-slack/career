@@ -3,19 +3,141 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../api/AuthContext';
 
-const STAGE_ORIENTATION = 'orientation';
-const STAGE_DEEP_DIVE = 'deep_dive';
+const SECTION_LABELS = {
+  likert: 'Section A · Agree or Disagree',
+  forced_choice: 'Section B · Pick One',
+  scenario: 'Section C · Scenarios',
+  situational: 'Section D · Workplace Situations',
+  ranking: 'Section E · Rank Your Preferences',
+};
+
+const LIKERT_SCALE = [
+  { value: 1, label: 'Strongly Disagree' },
+  { value: 2, label: 'Disagree' },
+  { value: 3, label: 'Neutral' },
+  { value: 4, label: 'Agree' },
+  { value: 5, label: 'Strongly Agree' },
+];
+
+function LikertQuestion({ question, onAnswer, onSkip }) {
+  return (
+    <div className="card" style={{ padding: 28 }}>
+      <h2 style={{ fontSize: 20 }}>{question.text}</h2>
+      <div style={{ display: 'flex', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
+        {LIKERT_SCALE.map((opt) => (
+          <button
+            key={opt.value}
+            className="btn btn-outline"
+            style={{ flex: '1 1 auto', minWidth: 100, flexDirection: 'column', padding: '14px 10px' }}
+            onClick={() => onAnswer(opt.value)}
+          >
+            <span style={{ fontSize: 20, fontWeight: 700 }}>{opt.value}</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{opt.label}</span>
+          </button>
+        ))}
+      </div>
+      <button className="btn btn-outline" style={{ marginTop: 16 }} onClick={onSkip}>
+        Skip this question
+      </button>
+    </div>
+  );
+}
+
+function ChoiceQuestion({ question, onAnswer, onSkip }) {
+  return (
+    <div className="card" style={{ padding: 28 }}>
+      <h2 style={{ fontSize: 20 }}>{question.text}</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
+        {question.options.map((opt) => (
+          <button
+            key={opt.key}
+            className="btn btn-outline"
+            style={{ justifyContent: 'flex-start', textAlign: 'left', fontWeight: 400, padding: '16px 18px' }}
+            onClick={() => onAnswer(opt.key)}
+          >
+            <span style={{ fontWeight: 700, marginRight: 10 }}>{opt.key}.</span>
+            {opt.text}
+          </button>
+        ))}
+      </div>
+      <button className="btn btn-outline" style={{ marginTop: 16 }} onClick={onSkip}>
+        Skip this question
+      </button>
+    </div>
+  );
+}
+
+function RankingQuestion({ question, onAnswer, onSkip }) {
+  const [order, setOrder] = useState([]);
+  const remaining = question.items.filter((item) => !order.includes(item.key));
+
+  function pick(itemKey) {
+    const updated = [...order, itemKey];
+    setOrder(updated);
+    if (updated.length === question.items.length) {
+      onAnswer(updated);
+    }
+  }
+
+  function reset() {
+    setOrder([]);
+  }
+
+  return (
+    <div className="card" style={{ padding: 28 }}>
+      <h2 style={{ fontSize: 20 }}>{question.text}</h2>
+      <p style={{ fontSize: 13 }}>Click items in order, most appealing first.</p>
+
+      {order.length > 0 && (
+        <ol style={{ paddingLeft: 20, marginBottom: 16 }}>
+          {order.map((key) => (
+            <li key={key} style={{ marginBottom: 4, fontWeight: 600 }}>
+              {question.items.find((i) => i.key === key)?.text}
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {remaining.map((item) => (
+          <button
+            key={item.key}
+            className="btn btn-outline"
+            style={{ justifyContent: 'flex-start', textAlign: 'left', fontWeight: 400, padding: '16px 18px' }}
+            onClick={() => pick(item.key)}
+          >
+            {item.text}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        {order.length > 0 && (
+          <button className="btn btn-outline" onClick={reset}>
+            Start over
+          </button>
+        )}
+        <button className="btn btn-outline" onClick={onSkip}>
+          Skip this question
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function Assessment() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [lead, setLead] = useState(null);
   const [questionSet, setQuestionSet] = useState(null);
-  const [stage, setStage] = useState(STAGE_ORIENTATION);
-  const [track, setTrack] = useState(null);
   const [index, setIndex] = useState(0);
-  const [orientationAnswers, setOrientationAnswers] = useState({});
-  const [deepDiveAnswers, setDeepDiveAnswers] = useState({});
+  const [answers, setAnswers] = useState({
+    likert: {},
+    forced_choice: {},
+    scenario: {},
+    situational: {},
+    ranking: {},
+  });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -30,7 +152,6 @@ export default function Assessment() {
         return true;
       }
       if (user) {
-        // Signed-in users skip the lead-capture form — use their account details.
         const newLead = await api.createLead({ name: user.name, email: user.email, consent_given: true });
         sessionStorage.setItem('lead', JSON.stringify(newLead));
         setLead(newLead);
@@ -50,75 +171,56 @@ export default function Assessment() {
     });
   }, [navigate, user, authLoading]);
 
-  const activeQuestions = useMemo(() => {
+  const steps = useMemo(() => {
     if (!questionSet) return [];
-    if (stage === STAGE_ORIENTATION) return questionSet.orientation;
-    return track === 'A' ? questionSet.track_a_deep_dive : questionSet.track_b_deep_dive;
-  }, [questionSet, stage, track]);
+    const flat = [];
+    for (const q of questionSet.likert) flat.push({ section: 'likert', question: q });
+    for (const q of questionSet.forced_choice) flat.push({ section: 'forced_choice', question: q });
+    for (const q of questionSet.scenario) flat.push({ section: 'scenario', question: q });
+    for (const q of questionSet.situational) flat.push({ section: 'situational', question: q });
+    for (const q of questionSet.ranking) flat.push({ section: 'ranking', question: q });
+    return flat;
+  }, [questionSet]);
 
-  const currentQuestion = activeQuestions[index];
-  const orientationCount = questionSet?.orientation.length ?? 8;
-  const deepDiveCount =
-    stage === STAGE_DEEP_DIVE
-      ? activeQuestions.length
-      : ((questionSet?.track_a_deep_dive.length ?? 12) + (questionSet?.track_b_deep_dive.length ?? 13)) / 2;
-  const totalSteps = stage === STAGE_ORIENTATION ? orientationCount : activeQuestions.length;
-  const overallTotal = orientationCount + deepDiveCount;
-  const overallDone = stage === STAGE_ORIENTATION ? index : orientationCount + index;
+  const answeredCount = Object.values(answers).reduce((sum, section) => sum + Object.keys(section).length, 0);
 
-  async function handleAnswer(optionKey) {
-    if (stage === STAGE_ORIENTATION) {
-      const updated = { ...orientationAnswers, [currentQuestion.id]: optionKey };
-      setOrientationAnswers(updated);
-
-      if (index + 1 < activeQuestions.length) {
-        setIndex(index + 1);
-        return;
-      }
-
-      // Orientation complete — determine track
-      setLoading(true);
-      try {
-        const { track: resolvedTrack } = await api.routeTrack(updated);
-        setTrack(resolvedTrack);
-        setStage(STAGE_DEEP_DIVE);
-        setIndex(0);
-      } catch {
-        setError('Could not determine your track. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    // Deep-dive stage
-    const updated = { ...deepDiveAnswers, [currentQuestion.id]: optionKey };
-    setDeepDiveAnswers(updated);
-
-    if (index + 1 < activeQuestions.length) {
-      setIndex(index + 1);
-      return;
-    }
-
-    // Final question answered — submit
+  async function submitNow(finalAnswers) {
     setSubmitting(true);
+    setError('');
     try {
-      const result = await api.submitAssessment({
-        lead_id: lead.id,
-        orientation_answers: orientationAnswers,
-        deep_dive_answers: updated,
-      });
+      const result = await api.submitAssessment({ lead_id: lead.id, answers: finalAnswers });
+      sessionStorage.removeItem('lead');
       navigate(`/results/${result.id}`);
-    } catch {
-      setError('Something went wrong submitting your assessment. Please try again.');
+    } catch (err) {
+      setError(err.message || 'Something went wrong submitting your assessment. Please try again.');
       setSubmitting(false);
     }
   }
 
-  function handleBack() {
-    if (index > 0) {
-      setIndex(index - 1);
+  function recordAnswer(section, questionId, value) {
+    const updated = { ...answers, [section]: { ...answers[section], [questionId]: value } };
+    setAnswers(updated);
+    advance(updated);
+  }
+
+  function skipCurrent() {
+    advance(answers);
+  }
+
+  function advance(currentAnswers) {
+    if (index + 1 >= steps.length) {
+      submitNow(currentAnswers);
+      return;
     }
+    setIndex(index + 1);
+  }
+
+  function goBack() {
+    if (index > 0) setIndex(index - 1);
+  }
+
+  function finishNow() {
+    submitNow(answers);
   }
 
   if (loading || submitting) {
@@ -129,7 +231,7 @@ export default function Assessment() {
     );
   }
 
-  if (error) {
+  if (error && !steps.length) {
     return (
       <div className="container" style={{ paddingTop: 80, textAlign: 'center' }}>
         <p style={{ color: 'var(--danger)' }}>{error}</p>
@@ -137,21 +239,27 @@ export default function Assessment() {
     );
   }
 
-  if (!currentQuestion) {
-    return null;
-  }
+  const current = steps[index];
+  if (!current) return null;
 
-  const progressPct = Math.round((overallDone / (overallTotal || 1)) * 100);
+  const progressPct = Math.round(((index + 1) / steps.length) * 100);
 
   return (
-    <div className="container" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 560 }}>
-      <div style={{ marginBottom: 24 }}>
+    <div className="container" style={{ paddingTop: 40, paddingBottom: 40, maxWidth: 600 }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>{SECTION_LABELS[current.section]}</p>
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
+            {index + 1} / {steps.length}
+          </p>
+        </div>
         <div
           style={{
             height: 8,
             borderRadius: 999,
             background: 'var(--milk-panel-alt)',
             overflow: 'hidden',
+            marginTop: 8,
           }}
         >
           <div
@@ -163,33 +271,40 @@ export default function Assessment() {
             }}
           />
         </div>
-        <p style={{ fontSize: 12, marginTop: 8, color: 'var(--ink-soft)' }}>
-          {stage === STAGE_ORIENTATION ? 'Orientation' : 'Deep-Dive'} · Question {index + 1} of {totalSteps}
-        </p>
       </div>
 
-      <div className="card" style={{ padding: 28 }}>
-        <h2 style={{ fontSize: 22 }}>{currentQuestion.text}</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
-          {currentQuestion.options.map((opt) => (
-            <button
-              key={opt.key}
-              className="btn btn-outline"
-              style={{ justifyContent: 'flex-start', textAlign: 'left', fontWeight: 400, padding: '16px 18px' }}
-              onClick={() => handleAnswer(opt.key)}
-            >
-              <span style={{ fontWeight: 700, marginRight: 10 }}>{opt.key}.</span>
-              {opt.text}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {index > 0 && (
-        <button className="btn btn-outline" style={{ marginTop: 16 }} onClick={handleBack}>
-          ← Back
-        </button>
+      {current.section === 'likert' && (
+        <LikertQuestion
+          question={current.question}
+          onAnswer={(val) => recordAnswer('likert', current.question.id, val)}
+          onSkip={skipCurrent}
+        />
       )}
+      {(current.section === 'forced_choice' || current.section === 'scenario' || current.section === 'situational') && (
+        <ChoiceQuestion
+          question={current.question}
+          onAnswer={(val) => recordAnswer(current.section, current.question.id, val)}
+          onSkip={skipCurrent}
+        />
+      )}
+      {current.section === 'ranking' && (
+        <RankingQuestion
+          question={current.question}
+          onAnswer={(val) => recordAnswer('ranking', current.question.id, val)}
+          onSkip={skipCurrent}
+        />
+      )}
+
+      {error && <p style={{ color: 'var(--danger)', marginTop: 12 }}>{error}</p>}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
+        <div>{index > 0 && <button className="btn btn-outline" onClick={goBack}>← Back</button>}</div>
+        {answeredCount > 0 && (
+          <button className="btn btn-accent" onClick={finishNow}>
+            Finish now & see my results →
+          </button>
+        )}
+      </div>
     </div>
   );
 }

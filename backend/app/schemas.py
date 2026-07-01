@@ -49,44 +49,67 @@ class QuestionOptionOut(BaseModel):
     text: str
 
 
-class QuestionOut(BaseModel):
+class LikertQuestionOut(BaseModel):
+    id: str
+    text: str
+
+
+class ChoiceQuestionOut(BaseModel):
     id: str
     text: str
     options: list[QuestionOptionOut]
 
 
+class RankingQuestionOut(BaseModel):
+    id: str
+    text: str
+    items: list[QuestionOptionOut]
+
+
 class QuestionSetOut(BaseModel):
-    orientation: list[QuestionOut]
-    track_a_deep_dive: list[QuestionOut]
-    track_b_deep_dive: list[QuestionOut]
+    likert: list[LikertQuestionOut]
+    forced_choice: list[ChoiceQuestionOut]
+    scenario: list[ChoiceQuestionOut]
+    situational: list[ChoiceQuestionOut]
+    ranking: list[RankingQuestionOut]
+
+
+class AssessmentAnswers(BaseModel):
+    likert: dict[str, int] = Field(default_factory=dict)
+    forced_choice: dict[str, str] = Field(default_factory=dict)
+    scenario: dict[str, str] = Field(default_factory=dict)
+    situational: dict[str, str] = Field(default_factory=dict)
+    ranking: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class SubmitRequest(BaseModel):
     lead_id: str
-    orientation_answers: dict[str, str]
-    deep_dive_answers: dict[str, str]
+    answers: AssessmentAnswers
 
 
-class CategoryOut(BaseModel):
+class CareerOut(BaseModel):
     key: str
     name: str
-    track: str
-    focus: Optional[str] = None
-    duration: Optional[str] = None
-    phase_1: bool
-    curriculum: Optional[list[str]] = None
-    resources: Optional[list[str]] = None
+    focus: str
+    duration: str
+    curriculum: list[str]
+    resources: list[str]
+
+
+class RecommendationOut(BaseModel):
+    rank: int
+    score: float
+    reason: str
+    career: CareerOut
 
 
 class ResultOut(BaseModel):
     id: str
-    track: str
     unlocked: bool
+    visible_count: int
     close_call: bool
     close_call_message: Optional[str] = None
-    primary: CategoryOut
-    secondary: CategoryOut
-    scores: dict[str, int]
+    recommendations: list[RecommendationOut]
 
 
 class DashboardResultOut(ResultOut):
@@ -114,8 +137,3 @@ class ConsultationOut(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class WaitlistJoin(BaseModel):
-    email: EmailStr
-    category_key: str

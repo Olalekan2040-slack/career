@@ -4,7 +4,6 @@ import { api } from '../api/client';
 import { useAuth } from '../api/AuthContext';
 
 function ResultSummary({ result }) {
-  const rankedScores = Object.entries(result.scores).sort((a, b) => b[1] - a[1]);
   const date = new Date(result.created_at).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
@@ -14,7 +13,7 @@ function ResultSummary({ result }) {
   return (
     <div className="card" style={{ padding: 24, marginBottom: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <p className="pill">Track {result.track} · {date}</p>
+        <p className="pill">{date} · Top {result.visible_count} matches</p>
         <Link to={`/results/${result.id}`} style={{ fontSize: 13 }}>
           View full page →
         </Link>
@@ -24,51 +23,23 @@ function ResultSummary({ result }) {
         <p style={{ fontSize: 13, color: 'var(--accent-dark)', marginTop: 10 }}>{result.close_call_message}</p>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-        <div>
+      {result.recommendations.map((rec) => (
+        <div key={rec.career.key} style={{ marginTop: 20 }}>
           <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)' }}>
-            Primary
+            #{rec.rank} Recommendation
           </p>
-          <h3 style={{ marginTop: 4 }}>{result.primary.name}</h3>
-          <p style={{ fontSize: 13 }}>{result.primary.focus}</p>
+          <h3 style={{ marginTop: 4 }}>{rec.career.name}</h3>
+          <p style={{ fontSize: 13 }}>{rec.career.focus}</p>
+          <p style={{ fontSize: 13, color: 'var(--accent-dark)', fontStyle: 'italic' }}>Why: {rec.reason}</p>
+          <ul style={{ paddingLeft: 18, marginTop: 8 }}>
+            {rec.career.curriculum.map((step) => (
+              <li key={step} style={{ marginBottom: 4, fontSize: 14 }}>
+                {step}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div>
-          <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)' }}>
-            Secondary
-          </p>
-          <h3 style={{ marginTop: 4 }}>{result.secondary.name}</h3>
-          <p style={{ fontSize: 13 }}>{result.secondary.focus}</p>
-        </div>
-      </div>
-
-      <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)', marginTop: 20 }}>
-        Your Strengths (all categories, ranked)
-      </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-        {rankedScores.map(([key, score]) => (
-          <span key={key} className="pill" style={{ background: 'var(--milk-panel)', color: 'var(--ink)' }}>
-            {key}: {score}
-          </span>
-        ))}
-      </div>
-
-      {[result.primary, result.secondary].map(
-        (category) =>
-          category.curriculum && (
-            <div key={category.key} style={{ marginTop: 20 }}>
-              <p style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)' }}>
-                {category.name} — Course Outline
-              </p>
-              <ul style={{ paddingLeft: 18 }}>
-                {category.curriculum.map((step) => (
-                  <li key={step} style={{ marginBottom: 4, fontSize: 14 }}>
-                    {step}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )
-      )}
+      ))}
     </div>
   );
 }
@@ -103,7 +74,7 @@ export default function Dashboard() {
     <div className="container" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 720 }}>
       <p className="pill">Your Dashboard</p>
       <h1 style={{ fontSize: 30, marginTop: 12 }}>Welcome back, {user.name.split(' ')[0]}</h1>
-      <p>Every assessment you take is saved here with full strengths and course outline — no charge.</p>
+      <p>Every assessment you take is saved here with your top 4 matches, reasons, and full course outlines — no charge.</p>
 
       <button className="btn btn-primary" onClick={() => navigate('/assessment')} style={{ marginBottom: 24 }}>
         Take a new assessment →

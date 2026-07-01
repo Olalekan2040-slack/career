@@ -12,109 +12,38 @@ function likelyNigerian() {
   }
 }
 
-function CategoryCard({ category, nameLocked, resultUnlocked, title }) {
+function RecommendationCard({ recommendation }) {
+  const { career, reason, rank } = recommendation;
   return (
     <div className="card" style={{ padding: 24, marginBottom: 16 }}>
-      <p className="pill">{title}</p>
-      {nameLocked ? (
-        <>
-          <h3 style={{ marginTop: 10 }}>🔒 {category.name}</h3>
-          <p>Unlock full details, curriculum, and resources for this path.</p>
-        </>
-      ) : (
-        <>
-          <h3 style={{ marginTop: 10 }}>{category.name}</h3>
-          {category.focus && <p>{category.focus}</p>}
-          {category.duration && (
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>Typical duration: {category.duration}</p>
-          )}
-          {category.curriculum ? (
-            <>
-              <p style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)', marginTop: 16 }}>
-                Curriculum Path
-              </p>
-              <ul style={{ paddingLeft: 18 }}>
-                {category.curriculum.map((step) => (
-                  <li key={step} style={{ marginBottom: 6 }}>
-                    {step}
-                  </li>
-                ))}
-              </ul>
-              <p style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)', marginTop: 16 }}>
-                Recommended Resources
-              </p>
-              <ul style={{ paddingLeft: 18 }}>
-                {category.resources.map((res) => (
-                  <li key={res} style={{ marginBottom: 6 }}>
-                    {res}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : !resultUnlocked ? (
-            <div
-              style={{
-                marginTop: 14,
-                padding: '14px 16px',
-                border: '1px dashed var(--accent)',
-                borderRadius: 10,
-                background: 'var(--milk-panel-alt)',
-              }}
-            >
-              <p style={{ margin: 0, fontSize: 14, color: 'var(--ink)' }}>
-                4-phase roadmap + curated resources — unlock for $1 to view.
-              </p>
-            </div>
-          ) : (
-            <WaitlistBox category={category} />
-          )}
-        </>
-      )}
+      <p className="pill">Recommendation #{rank}</p>
+      <h3 style={{ marginTop: 10 }}>{career.name}</h3>
+      <p>{career.focus}</p>
+      <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>Typical duration: {career.duration}</p>
+      <p style={{ fontSize: 14, color: 'var(--accent-dark)', fontStyle: 'italic', marginTop: 10 }}>
+        Why this fits: {reason}
+      </p>
+      <p style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)', marginTop: 16 }}>
+        Curriculum Path
+      </p>
+      <ul style={{ paddingLeft: 18 }}>
+        {career.curriculum.map((step) => (
+          <li key={step} style={{ marginBottom: 6 }}>
+            {step}
+          </li>
+        ))}
+      </ul>
+      <p style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)', marginTop: 16 }}>
+        Recommended Resources
+      </p>
+      <ul style={{ paddingLeft: 18 }}>
+        {career.resources.map((res) => (
+          <li key={res} style={{ marginBottom: 6 }}>
+            {res}
+          </li>
+        ))}
+      </ul>
     </div>
-  );
-}
-
-function WaitlistBox({ category }) {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle');
-
-  async function join(e) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setStatus('sending');
-    try {
-      await api.joinWaitlist({ email: email.trim(), category_key: category.key });
-      setStatus('joined');
-    } catch {
-      setStatus('error');
-    }
-  }
-
-  if (status === 'joined') {
-    return (
-      <p style={{ marginTop: 12, color: 'var(--success)', fontWeight: 600 }}>
-        You're on the list — we'll email you the moment {category.name}'s curriculum is ready.
-      </p>
-    );
-  }
-
-  return (
-    <form onSubmit={join} style={{ marginTop: 14 }}>
-      <p style={{ fontSize: 14, color: 'var(--accent-dark)', fontWeight: 600 }}>
-        Full curriculum for {category.name} is being finalised — get notified when it's ready:
-      </p>
-      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-        <input
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <button className="btn btn-outline" type="submit" disabled={status === 'sending'}>
-          Notify me
-        </button>
-      </div>
-    </form>
   );
 }
 
@@ -193,9 +122,11 @@ export default function Results() {
 
   return (
     <div className="container" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 640 }}>
-      <p className="pill">{result.unlocked ? 'Full Result — Unlocked' : 'Your Free Result'}</p>
+      <p className="pill">
+        {result.unlocked ? 'Full Result — Top 4 Matches' : 'Your Top 2 Matches'}
+      </p>
       <h1 style={{ fontSize: 30, marginTop: 12 }}>
-        {result.unlocked ? 'Here is your complete roadmap' : 'Your top career match'}
+        {result.unlocked ? 'Here are your top 4 recommended careers' : 'Here are your top 2 recommended careers'}
       </h1>
 
       {result.close_call && (
@@ -204,33 +135,24 @@ export default function Results() {
         </div>
       )}
 
-      <CategoryCard
-        category={result.primary}
-        nameLocked={false}
-        resultUnlocked={result.unlocked}
-        title="Primary Recommendation"
-      />
-      <CategoryCard
-        category={result.secondary}
-        nameLocked={!result.unlocked}
-        resultUnlocked={result.unlocked}
-        title="Secondary Recommendation"
-      />
+      {result.recommendations.map((rec) => (
+        <RecommendationCard key={rec.career.key} recommendation={rec} />
+      ))}
 
       {!result.unlocked && (
         <div className="card" style={{ padding: 26, marginTop: 8, textAlign: 'center' }}>
           {!user && (
             <>
-              <h3>Create a free account to see your full result</h3>
+              <h3>Create a free account to see your top 4 matches</h3>
               <p>
-                Your strengths breakdown and full 4-phase course outline for both matches — saved to your
+                Get 2 more recommendations, with the same full curriculum and reasons — saved to your
                 dashboard, free forever.
               </p>
               <Link to="/signup" className="btn btn-primary btn-block" style={{ textDecoration: 'none', marginBottom: 20 }}>
                 Sign up free →
               </Link>
               <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 12px 0' }}>
-                — or unlock just this result for $1 without an account —
+                — or unlock your top 4 for $1 without an account —
               </p>
             </>
           )}
@@ -257,7 +179,7 @@ export default function Results() {
           </p>
 
           <button className="btn btn-outline btn-block" onClick={handleUnlock} disabled={paying || confirming}>
-            {confirming ? 'Confirming payment…' : paying ? 'Redirecting…' : 'Unlock Full Result — $1'}
+            {confirming ? 'Confirming payment…' : paying ? 'Redirecting…' : 'Unlock Top 4 Matches — $1'}
           </button>
         </div>
       )}
