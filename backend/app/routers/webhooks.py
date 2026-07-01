@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from .. import models
 from ..config import settings
-from ..database import get_db
+from ..database import SessionLocal, get_db
 from ..email_service import render_recommendations_email, send_email
 from ..payments import verify_paystack_signature, verify_stripe_webhook
 from ..result_builder import build_result_out
@@ -11,16 +11,19 @@ from ..result_builder import build_result_out
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
 
-def _unlock_result_and_notify(db: Session, result: models.Result) -> None:
-    if result.unlocked:
-        return
-
-    result.unlocked = True
-    db.commit()
-
-    lead = result.response.lead
-
+def _unlock_result_and_notify(result_id: str) -> None:
+    """Runs in the background — Stripe/Paystack expect a fast webhook ack, and the
+    SMTP round trip shouldn't hold that up (or the user's results page either)."""
+    db = SessionLocal()
     try:
+        result = db.get(models.Result, result_id)
+        if result is None or result.unlocked:
+            return
+
+        result.unlocked = True
+        db.commit()
+
+        lead = result.response.lead
         result_out = build_result_out(result, force_unlock=True)
         result_url = f"{settings.frontend_url}/results/{result.id}"
         html = render_recommendations_email(
@@ -30,12 +33,15 @@ def _unlock_result_and_notify(db: Session, result: models.Result) -> None:
         result.paid_email_sent = True
         db.commit()
     except Exception as exc:  # pragma: no cover - best-effort email delivery
-        print(f"[webhooks] failed to send unlock email: {exc}")
+        print(f"[webhooks] failed to unlock/notify: {exc}")
+    finally:
+        db.close()
 
 
 @router.post("/stripe")
 async def stripe_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     stripe_signature: str = Header(None, alias="stripe-signature"),
     db: Session = Depends(get_db),
 ):
@@ -60,7 +66,7 @@ async def stripe_webhook(
                 payment.status = "success"
                 payment.provider_reference = session.get("id")
             db.commit()
-            _unlock_result_and_notify(db, result)
+            background_tasks.add_task(_unlock_result_and_notify, result.id)
 
     return {"received": True}
 
@@ -68,6 +74,7 @@ async def stripe_webhook(
 @router.post("/paystack")
 async def paystack_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     x_paystack_signature: str = Header(None, alias="x-paystack-signature"),
     db: Session = Depends(get_db),
 ):
@@ -87,8 +94,7 @@ async def paystack_webhook(
         if payment is not None:
             payment.status = "success"
             db.commit()
-            result = db.get(models.Result, payment.result_id)
-            if result is not None:
-                _unlock_result_and_notify(db, result)
+            if payment.result_id:
+                background_tasks.add_task(_unlock_result_and_notify, payment.result_id)
 
     return {"received": True}

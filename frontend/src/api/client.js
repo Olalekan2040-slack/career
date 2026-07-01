@@ -34,6 +34,7 @@ export const api = {
   login: (payload) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => request('/api/auth/me'),
   getDashboardResults: () => request('/api/dashboard/results'),
+  getMeta: () => request('/api/meta'),
   createLead: (payload) => request('/api/leads', { method: 'POST', body: JSON.stringify(payload) }),
   getQuestions: () => request('/api/questions'),
   submitAssessment: (payload) => request('/api/submit', { method: 'POST', body: JSON.stringify(payload) }),

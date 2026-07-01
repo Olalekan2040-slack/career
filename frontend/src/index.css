@@ -159,3 +159,24 @@ label {
   margin-bottom: 6px;
   display: block;
 }
+
+.grid-responsive-2,
+.grid-responsive-3 {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-responsive-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.grid-responsive-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 700px) {
+  .grid-responsive-2,
+  .grid-responsive-3 {
+    grid-template-columns: 1fr;
+  }
+}
