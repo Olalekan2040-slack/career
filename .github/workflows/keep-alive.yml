@@ -1,0 +1,15 @@
+name: Keep Render backend awake
+
+on:
+  schedule:
+    # GitHub's scheduler is best-effort and can lag a few minutes under load,
+    # so ping more often than the ~5 minute idle timeout to leave margin.
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: curl -fsS --max-time 30 https://career-assessment-backend-a0xc.onrender.com/api/health

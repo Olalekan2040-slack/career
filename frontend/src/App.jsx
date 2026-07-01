@@ -1,5 +1,6 @@
 import { Route, BrowserRouter, Routes } from 'react-router-dom';
 import { AuthProvider } from './api/AuthContext';
+import { useKeepAlive } from './api/useKeepAlive';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Landing from './pages/Landing';
@@ -11,6 +12,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 
 function App() {
+  useKeepAlive();
+
   return (
     <AuthProvider>
       <BrowserRouter>

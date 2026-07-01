@@ -28,6 +28,8 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // Best-effort keep-alive ping — swallows errors, never surfaces to the UI.
+  ping: () => fetch(`${API_URL}/api/health`).catch(() => {}),
   signup: (payload) => request('/api/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
   login: (payload) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => request('/api/auth/me'),
