@@ -1,0 +1,268 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { api } from '../api/client';
+import { useAuth } from '../api/AuthContext';
+import ConsultationCTA from '../components/ConsultationCTA';
+
+function likelyNigerian() {
+  try {
+    return (navigator.language || '').toLowerCase().includes('-ng');
+  } catch {
+    return false;
+  }
+}
+
+function CategoryCard({ category, nameLocked, resultUnlocked, title }) {
+  return (
+    <div className="card" style={{ padding: 24, marginBottom: 16 }}>
+      <p className="pill">{title}</p>
+      {nameLocked ? (
+        <>
+          <h3 style={{ marginTop: 10 }}>🔒 {category.name}</h3>
+          <p>Unlock full details, curriculum, and resources for this path.</p>
+        </>
+      ) : (
+        <>
+          <h3 style={{ marginTop: 10 }}>{category.name}</h3>
+          {category.focus && <p>{category.focus}</p>}
+          {category.duration && (
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>Typical duration: {category.duration}</p>
+          )}
+          {category.curriculum ? (
+            <>
+              <p style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)', marginTop: 16 }}>
+                Curriculum Path
+              </p>
+              <ul style={{ paddingLeft: 18 }}>
+                {category.curriculum.map((step) => (
+                  <li key={step} style={{ marginBottom: 6 }}>
+                    {step}
+                  </li>
+                ))}
+              </ul>
+              <p style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)', marginTop: 16 }}>
+                Recommended Resources
+              </p>
+              <ul style={{ paddingLeft: 18 }}>
+                {category.resources.map((res) => (
+                  <li key={res} style={{ marginBottom: 6 }}>
+                    {res}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : !resultUnlocked ? (
+            <div
+              style={{
+                marginTop: 14,
+                padding: '14px 16px',
+                border: '1px dashed var(--accent)',
+                borderRadius: 10,
+                background: 'var(--milk-panel-alt)',
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--ink)' }}>
+                4-phase roadmap + curated resources — unlock for $1 to view.
+              </p>
+            </div>
+          ) : (
+            <WaitlistBox category={category} />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function WaitlistBox({ category }) {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle');
+
+  async function join(e) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus('sending');
+    try {
+      await api.joinWaitlist({ email: email.trim(), category_key: category.key });
+      setStatus('joined');
+    } catch {
+      setStatus('error');
+    }
+  }
+
+  if (status === 'joined') {
+    return (
+      <p style={{ marginTop: 12, color: 'var(--success)', fontWeight: 600 }}>
+        You're on the list — we'll email you the moment {category.name}'s curriculum is ready.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={join} style={{ marginTop: 14 }}>
+      <p style={{ fontSize: 14, color: 'var(--accent-dark)', fontWeight: 600 }}>
+        Full curriculum for {category.name} is being finalised — get notified when it's ready:
+      </p>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <input
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <button className="btn btn-outline" type="submit" disabled={status === 'sending'}>
+          Notify me
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export default function Results() {
+  const { resultId } = useParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [result, setResult] = useState(null);
+  const [lead, setLead] = useState(null);
+  const [error, setError] = useState('');
+  const [paying, setPaying] = useState(false);
+  const [confirming, setConfirming] = useState(searchParams.get('payment') === 'confirming' || searchParams.get('payment') === 'success');
+  const [provider, setProvider] = useState(likelyNigerian() ? 'paystack' : 'stripe');
+  const pollRef = useRef(null);
+
+  const fetchResult = useCallback(async () => {
+    try {
+      const data = await api.getResult(resultId);
+      setResult(data);
+      return data;
+    } catch {
+      setError('We could not find this result.');
+      return null;
+    }
+  }, [resultId]);
+
+  useEffect(() => {
+    const storedLead = sessionStorage.getItem('lead');
+    if (storedLead) setLead(JSON.parse(storedLead));
+    fetchResult();
+  }, [fetchResult]);
+
+  useEffect(() => {
+    if (!confirming) return;
+    pollRef.current = setInterval(async () => {
+      const data = await fetchResult();
+      if (data?.unlocked) {
+        setConfirming(false);
+        clearInterval(pollRef.current);
+      }
+    }, 2500);
+    return () => clearInterval(pollRef.current);
+  }, [confirming, fetchResult]);
+
+  async function handleUnlock() {
+    setPaying(true);
+    try {
+      const session =
+        provider === 'paystack' ? await api.checkoutPaystack(resultId) : await api.checkoutStripe(resultId);
+      window.location.href = session.checkout_url;
+    } catch {
+      setError('Could not start checkout. Please try again.');
+      setPaying(false);
+    }
+  }
+
+  if (error) {
+    return (
+      <div className="container" style={{ paddingTop: 60, textAlign: 'center' }}>
+        <p style={{ color: 'var(--danger)' }}>{error}</p>
+        <button className="btn btn-outline" onClick={() => navigate('/')}>
+          Back to home
+        </button>
+      </div>
+    );
+  }
+
+  if (!result) {
+    return (
+      <div className="container" style={{ paddingTop: 60, textAlign: 'center' }}>
+        <p>Loading your result…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 640 }}>
+      <p className="pill">{result.unlocked ? 'Full Result — Unlocked' : 'Your Free Result'}</p>
+      <h1 style={{ fontSize: 30, marginTop: 12 }}>
+        {result.unlocked ? 'Here is your complete roadmap' : 'Your top career match'}
+      </h1>
+
+      {result.close_call && (
+        <div className="card" style={{ padding: 18, background: 'var(--milk-panel-alt)', marginBottom: 20 }}>
+          <p style={{ margin: 0 }}>{result.close_call_message}</p>
+        </div>
+      )}
+
+      <CategoryCard
+        category={result.primary}
+        nameLocked={false}
+        resultUnlocked={result.unlocked}
+        title="Primary Recommendation"
+      />
+      <CategoryCard
+        category={result.secondary}
+        nameLocked={!result.unlocked}
+        resultUnlocked={result.unlocked}
+        title="Secondary Recommendation"
+      />
+
+      {!result.unlocked && (
+        <div className="card" style={{ padding: 26, marginTop: 8, textAlign: 'center' }}>
+          {!user && (
+            <>
+              <h3>Create a free account to see your full result</h3>
+              <p>
+                Your strengths breakdown and full 4-phase course outline for both matches — saved to your
+                dashboard, free forever.
+              </p>
+              <Link to="/signup" className="btn btn-primary btn-block" style={{ textDecoration: 'none', marginBottom: 20 }}>
+                Sign up free →
+              </Link>
+              <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 12px 0' }}>
+                — or unlock just this result for $1 without an account —
+              </p>
+            </>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 18 }}>
+            <button
+              className={provider === 'stripe' ? 'btn btn-primary' : 'btn btn-outline'}
+              onClick={() => setProvider('stripe')}
+              type="button"
+            >
+              Pay with card (international)
+            </button>
+            <button
+              className={provider === 'paystack' ? 'btn btn-primary' : 'btn btn-outline'}
+              onClick={() => setProvider('paystack')}
+              type="button"
+            >
+              Pay with Nigerian card/bank
+            </button>
+          </div>
+
+          <p style={{ fontSize: 13, marginBottom: 16 }}>
+            {provider === 'stripe' ? '$1.00 USD' : '$1 USD (~₦1,500)'}
+          </p>
+
+          <button className="btn btn-outline btn-block" onClick={handleUnlock} disabled={paying || confirming}>
+            {confirming ? 'Confirming payment…' : paying ? 'Redirecting…' : 'Unlock Full Result — $1'}
+          </button>
+        </div>
+      )}
+
+      {lead && <ConsultationCTA leadId={lead.id} />}
+    </div>
+  );
+}

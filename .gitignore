@@ -1,0 +1,13 @@
+.env
+backend/.env
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.db
+backend/venv/
+backend/.venv/
+node_modules/
+frontend/dist/
+*.pyc
+*.log
+backend/uvicorn.log
+frontend/vite_dev.log
