@@ -52,7 +52,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://career-assessment-backend.onrender.com
+        value: https://career-assessment-backend-a0xc.onrender.com
     routes:
       - type: rewrite
         source: /*
