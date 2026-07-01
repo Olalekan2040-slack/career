@@ -11,3 +11,4 @@ frontend/dist/
 *.log
 backend/uvicorn.log
 frontend/vite_dev.log
+.claude/
