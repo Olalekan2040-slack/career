@@ -16,7 +16,7 @@ services:
       - key: FRONTEND_URL
         value: https://career-assessment-frontend.onrender.com
       - key: DATABASE_URL
-        value: sqlite:///./assessment.db
+        sync: false  # set to the Render Postgres Internal Database URL in the dashboard
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT

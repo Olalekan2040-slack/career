@@ -13,7 +13,7 @@ instead. Built per `Tech_Career_Assessment_PRD_v2.md` and the
 
 ## Stack
 
-- **Backend**: FastAPI (Python) + SQLAlchemy + SQLite
+- **Backend**: FastAPI (Python) + SQLAlchemy (SQLite locally, Postgres in production)
 - **Frontend**: React (Vite) + React Router
 - **Auth**: Email + password, signed expiring tokens (no external JWT library)
 - **Payments**: Stripe Checkout (international) + Paystack Checkout (Nigeria), test-mode by default — optional alternative to signing up
@@ -122,7 +122,8 @@ The repo includes a `render.yaml` Blueprint that provisions both services in one
    - `career-assessment-frontend` — static site (Vite build), free
 4. Render will prompt you to fill in the env vars marked `sync: false` (secrets it won't
    auto-generate): `SMTP_USER`, `SMTP_APP_PASSWORD`, `STRIPE_SECRET_KEY`,
-   `STRIPE_WEBHOOK_SECRET`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `CONSULTATION_BOOKING_URL`.
+   `STRIPE_WEBHOOK_SECRET`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`,
+   `CONSULTATION_BOOKING_URL`, and `DATABASE_URL` (see below).
 5. After the first deploy, confirm the actual URLs Render assigned (it may append a
    suffix if the exact name is taken — this happened on first deploy; the backend
    is actually at `career-assessment-backend-a0xc.onrender.com`). If either differs
@@ -134,12 +135,23 @@ The repo includes a `render.yaml` Blueprint that provisions both services in one
    - Stripe: `https://<your-backend-url>/api/webhooks/stripe`
    - Paystack: `https://<your-backend-url>/api/webhooks/paystack`
 
+### Database: Postgres, not SQLite, in production
+
+Render's free web services use an ephemeral filesystem — a SQLite file would be wiped
+on every deploy or restart. The app already uses SQLAlchemy, so switching databases is
+just a `DATABASE_URL` change:
+
+1. Create a Render Postgres instance (or use one you already have).
+2. Copy its **Internal Database URL** from the Render dashboard (only reachable from
+   other Render services, not from your own machine — that's expected).
+3. Paste it into the backend service's `DATABASE_URL` env var in the Render dashboard.
+4. Redeploy the backend. `Base.metadata.create_all()` runs on startup and creates the
+   tables automatically on first boot against the new database.
+
+Locally, `DATABASE_URL` is unset and the app falls back to SQLite (`backend/.env` /
+`.env.example`) — no need to touch anything for local dev.
+
 **Known limitations of this setup** (accepted for now, revisit before real launch):
-- Render's free web services use an **ephemeral filesystem** — the SQLite database
-  file is wiped on every deploy or restart, so leads/results/payments data does not
-  persist across deploys. Fine for early testing; before handling real users, either
-  attach a Render persistent disk or migrate `DATABASE_URL` to a managed Postgres
-  (the app already uses SQLAlchemy, so this is a config change, not a rewrite).
 - Render's free web services spin down after ~5 minutes of inactivity and cold-start
   slowly on the next request. Two mitigations are already in place: the frontend
   pings `/api/health` every 4 minutes while a visitor has the site open
@@ -169,8 +181,8 @@ The repo includes a `render.yaml` Blueprint that provisions both services in one
   without a terminal
 - Backend keep-alive (frontend heartbeat + GitHub Actions cron) to reduce
   Render free-tier cold starts
-- SQLite storage via SQLAlchemy — swap `DATABASE_URL` to Postgres later with
-  no code changes
+- Postgres in production (Render), SQLite for local dev — same SQLAlchemy
+  models, just a `DATABASE_URL` env var difference
 
 ## Not implemented / needs your input before launch
 
