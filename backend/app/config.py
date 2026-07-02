@@ -27,5 +27,12 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./assessment.db"
 
+    # Comma-separated list of emails auto-granted admin access on signup/login.
+    admin_emails: str = "olalekanquadri58@gmail.com"
+
+    @property
+    def admin_email_list(self) -> list[str]:
+        return [e.strip().lower() for e in self.admin_emails.split(",") if e.strip()]
+
 
 settings = Settings()

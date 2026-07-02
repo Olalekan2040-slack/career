@@ -1,14 +1,15 @@
 # Global Digital Skills Career Assessment Platform
 
-A free career assessment — no signup required to take it — that maps a
-person's real strengths onto 69 digital careers using a genuine psychometric
-instrument: 88 questions across 5 formats (Likert agreement, forced-choice,
-scenario-based, situational judgment, and preference ranking), scoring 24
-underlying competencies which are then projected onto the career space.
-Anyone can answer as few or as many questions as they like and get their top
-2 matches for free, each with a plain-language reason and a full course
-outline; creating a free account (or paying $1) unlocks the top 4 matches
-instead. Built per `Tech_Career_Assessment_PRD_v2.md` and the
+A free career assessment that maps a person's real strengths onto 69 digital
+careers using a genuine psychometric instrument: an 88-question bank across 5
+formats (Likert agreement, forced-choice, scenario-based, situational
+judgment, and preference ranking), scoring 24 underlying competencies which
+are then projected onto the career space. Each session samples a focused,
+randomised ~20 questions from the full bank. A free account (name, email,
+password) is required to take the assessment; every result is saved to a
+personal dashboard with the top 4 recommended careers, each with a
+plain-language reason and a full course outline. Built per
+`Tech_Career_Assessment_PRD_v2.md` and the
 `Comprehensive_Question_Bank_Psychometric.docx`.
 
 ## Stack
@@ -16,7 +17,7 @@ instead. Built per `Tech_Career_Assessment_PRD_v2.md` and the
 - **Backend**: FastAPI (Python) + SQLAlchemy (SQLite locally, Postgres in production)
 - **Frontend**: React (Vite) + React Router
 - **Auth**: Email + password, signed expiring tokens (no external JWT library)
-- **Payments**: Stripe Checkout (international) + Paystack Checkout (Nigeria), test-mode by default — optional alternative to signing up
+- **Payments**: Stripe + Paystack integration exists in the backend (test-mode) but is not currently surfaced in the UI — see "Accounts, admin, and payments" below
 - **Email**: Gmail SMTP (App Password, port 465/SSL), styled HTML templates in a milky/cream theme
 
 ## The assessment engine
@@ -46,7 +47,7 @@ backend/            FastAPI app
     payments.py        Stripe + Paystack integration
 frontend/            React (Vite) app
   src/
-    pages/            Landing, LeadCapture, Assessment, Results, Signup, Login, Dashboard
+    pages/            Landing, Assessment, Results, Signup, Login, Dashboard, Admin
     components/        Navbar, Footer (with profile photo), ConsultationCTA
     api/client.js       API client, AuthContext.jsx auth state
 ```
@@ -84,6 +85,7 @@ Open the printed local URL (default `http://localhost:5173`).
 | Variable | Purpose |
 |---|---|
 | `SECRET_KEY` | Random secret signing auth tokens — generate your own for production (`python -c "import secrets; print(secrets.token_hex(32))"`) |
+| `ADMIN_EMAILS` | Comma-separated emails auto-granted admin access (`/admin` user list) on signup/login |
 | `SMTP_USER` / `SMTP_APP_PASSWORD` | Gmail address + [App Password](https://myaccount.google.com/apppasswords) used to send result emails |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe test/live keys — get from the Stripe Dashboard |
 | `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | Paystack test/live keys |
@@ -97,19 +99,24 @@ filled in and verified working end-to-end. Stripe keys are still placeholders �
 replace `sk_test_replace_me` with real test (or live) keys before going live;
 no code changes are needed.
 
-## How the free vs. account vs. $1 tiers work
+## Accounts, admin, and payments
 
-- **Anonymous (no account)**: takes the assessment via name+email only, sees
-  their **top 2** recommended careers — each with the reason it matched and a
-  full course outline. This is a one-off view, not saved anywhere they can log
-  back into.
-- **Signed up (free account)**: sees their **top 4** recommended careers
-  immediately, saved to a personal **Dashboard** (`/dashboard`, lists every
-  assessment taken), and emailed in full detail right after submitting. No
-  payment involved — this is the primary way to unlock the top 4.
-- **$1 unlock (Stripe/Paystack)**: still available for anonymous users who'd
-  rather pay once than create an account, to see the same top 4 without
-  signing up.
+- **Signup is required** to take the assessment — name, email, and password.
+  There is no anonymous path; `POST /api/leads` and `POST /api/submit` both
+  require a valid auth token (401 otherwise).
+- Every signed-up user sees their **top 4** recommended careers immediately,
+  saved to a personal **Dashboard** (`/dashboard`, lists every assessment
+  taken), and emailed in full detail right after submitting.
+- **Admin access**: any account whose email is listed in the `ADMIN_EMAILS`
+  env var (comma-separated; defaults to `olalekanquadri58@gmail.com`) is
+  automatically flagged `is_admin` on signup/login. Admins see an **Admin**
+  link in the nav leading to `/admin`, listing every registered user's name,
+  email, and join date (`GET /api/admin/users`, 403 for non-admins).
+- **Payments (Stripe/Paystack)**: the backend integration from an earlier
+  version of the product still exists (`backend/app/payments.py`,
+  `routers/checkout.py`, `routers/webhooks.py`) but is no longer surfaced in
+  the UI, since mandatory signup replaced the free/$1-unlock tiering it was
+  built for. It's dormant, not deleted, in case a future paid tier is wanted.
 
 ## Deploying to Render
 
@@ -162,20 +169,23 @@ Locally, `DATABASE_URL` is unset and the app falls back to SQLite (`backend/.env
 
 ## What's implemented
 
-- Full 88-question, 5-format psychometric assessment scoring 24 competencies
-  and ranking all 69 careers from day one, with partial-completion support
+- Full 88-question, 5-format psychometric bank scoring 24 competencies and
+  ranking all 69 careers; each session samples a randomised ~20-question
+  subset, with partial-completion support (skip any question)
+- Answering a question you've already answered and going back highlights
+  your previous choice so you can review and change it
 - Derived competency→career mapping matrix, fully traceable to the source
   question bank (see "The assessment engine" above)
 - Full curriculum + resources for all 69 careers (4-phase outline + 3
   resources each)
 - Plain-language "why this fits" reason generated per recommendation
-- Free tier (top 2, anonymous) vs. account/paid tier (top 4) recommendation
-  counts, matching the requested "signed in = 4, anonymous = 2" behaviour
-- Email + password signup/login, dashboard listing full assessment history
-- $1 unlock via Stripe or Paystack (manual + locale-based provider toggle),
-  webhook-driven unlock + confirmation polling — optional alternative to signup
-- Result emails (2- and 4-recommendation tiers), milky-themed, with reasons
-  and full curricula included, footer/portfolio link, and a profile photo
+- Mandatory email + password signup before taking the assessment; every
+  result is saved and shows the top 4 recommended careers
+- Admin page (`/admin`) listing every registered user's name, email, and
+  join date, gated by `ADMIN_EMAILS`
+- Result emails, milky-themed, with reasons and full curricula included,
+  footer/portfolio link, and a profile photo — sent via a background task so
+  the results page loads immediately instead of waiting on the SMTP round trip
 - Consultation booking CTA available on every result screen
 - Desktop shortcut (`start_app.bat` + Desktop `.lnk`) to launch both servers
   without a terminal
@@ -186,14 +196,12 @@ Locally, `DATABASE_URL` is unset and the app falls back to SQLite (`backend/.env
 
 ## Not implemented / needs your input before launch
 
-- Real Stripe API keys (Paystack test keys are filled in and verified; Stripe
-  is still a placeholder — payments via Stripe will error until you add keys)
+- Payments (Stripe/Paystack) are dormant in the backend but not wired into
+  the UI — see "Accounts, admin, and payments" above
 - Calendly/Cal.com embed — currently a plain link (`CONSULTATION_BOOKING_URL`)
   rather than a live scheduler; the in-app "Book a consultation" form logs the
   request to the database instead of syncing with an external calendar
 - Password reset / email verification for accounts — not built yet
-- Retroactively "claiming" an anonymous result after signing up — not built;
-  signing up affects assessments taken from that point forward
 - The 5 careers with no question-bank signal (Mobile App Dev, Desktop App
   Dev, Game Dev, Blockchain Dev, Web3 Dev) use hand-authored fallback
   competency profiles rather than derived ones — reasonable but worth

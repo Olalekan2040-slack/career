@@ -67,3 +67,17 @@ def get_optional_user(
     if not user_id:
         return None
     return db.get(models.User, user_id)
+
+
+def get_current_admin(current_user: models.User = Depends(get_current_user)) -> models.User:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+
+def sync_admin_flag(user: models.User) -> None:
+    """Grants (or revokes) admin access based on ADMIN_EMAILS — call after
+    signup/login so the flag stays in sync if the env var changes."""
+    should_be_admin = user.email.lower() in settings.admin_email_list
+    if user.is_admin != should_be_admin:
+        user.is_admin = should_be_admin

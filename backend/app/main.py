@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import models
 from .config import settings
 from .database import Base, engine
-from .routers import auth, checkout, consultation, dashboard, leads, meta, questions, result, submit, webhooks
+from .routers import admin, auth, checkout, consultation, dashboard, leads, meta, questions, result, submit, webhooks
 
 Base.metadata.create_all(bind=engine)
 
@@ -19,6 +19,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(dashboard.router)
 app.include_router(meta.router)
 app.include_router(leads.router)

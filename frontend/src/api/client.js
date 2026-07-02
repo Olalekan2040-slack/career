@@ -35,11 +35,10 @@ export const api = {
   me: () => request('/api/auth/me'),
   getDashboardResults: () => request('/api/dashboard/results'),
   getMeta: () => request('/api/meta'),
+  getAdminUsers: () => request('/api/admin/users'),
   createLead: (payload) => request('/api/leads', { method: 'POST', body: JSON.stringify(payload) }),
   getQuestions: () => request('/api/questions'),
   submitAssessment: (payload) => request('/api/submit', { method: 'POST', body: JSON.stringify(payload) }),
   getResult: (resultId) => request(`/api/result/${resultId}`),
-  checkoutStripe: (resultId) => request('/api/checkout/stripe', { method: 'POST', body: JSON.stringify({ result_id: resultId }) }),
-  checkoutPaystack: (resultId) => request('/api/checkout/paystack', { method: 'POST', body: JSON.stringify({ result_id: resultId }) }),
   bookConsultation: (payload) => request('/api/consultation', { method: 'POST', body: JSON.stringify(payload) }),
 };

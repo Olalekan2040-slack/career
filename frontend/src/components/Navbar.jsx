@@ -33,6 +33,11 @@ export default function Navbar() {
               <Link to="/dashboard" style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 600 }}>
                 Dashboard
               </Link>
+              {user.is_admin && (
+                <Link to="/admin" style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 600 }}>
+                  Admin
+                </Link>
+              )}
               <span style={{ color: 'var(--ink-soft)' }}>Hi, {user.name.split(' ')[0]}</span>
               <button className="btn btn-outline" onClick={handleLogout} style={{ padding: '8px 16px' }}>
                 Log out

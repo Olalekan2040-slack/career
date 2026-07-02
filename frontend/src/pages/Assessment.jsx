@@ -182,18 +182,21 @@ export default function Assessment() {
 
     async function initLead() {
       const storedLead = sessionStorage.getItem('lead');
+      if (!user) {
+        // Taking the assessment requires an account — an assessment session
+        // (lead) is always tied to the signed-in user's id.
+        sessionStorage.removeItem('lead');
+        navigate('/signup');
+        return false;
+      }
       if (storedLead) {
         setLead(JSON.parse(storedLead));
         return true;
       }
-      if (user) {
-        const newLead = await api.createLead({ name: user.name, email: user.email, consent_given: true });
-        sessionStorage.setItem('lead', JSON.stringify(newLead));
-        setLead(newLead);
-        return true;
-      }
-      navigate('/start');
-      return false;
+      const newLead = await api.createLead({ name: user.name, email: user.email, consent_given: true });
+      sessionStorage.setItem('lead', JSON.stringify(newLead));
+      setLead(newLead);
+      return true;
     }
 
     initLead().then((ready) => {

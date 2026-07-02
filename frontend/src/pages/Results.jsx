@@ -1,16 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
-import { useAuth } from '../api/AuthContext';
 import ConsultationCTA from '../components/ConsultationCTA';
-
-function likelyNigerian() {
-  try {
-    return (navigator.language || '').toLowerCase().includes('-ng');
-  } catch {
-    return false;
-  }
-}
 
 function RecommendationCard({ recommendation }) {
   const { career, reason, rank } = recommendation;
@@ -49,57 +40,20 @@ function RecommendationCard({ recommendation }) {
 
 export default function Results() {
   const { resultId } = useParams();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [result, setResult] = useState(null);
   const [lead, setLead] = useState(null);
   const [error, setError] = useState('');
-  const [paying, setPaying] = useState(false);
-  const [confirming, setConfirming] = useState(searchParams.get('payment') === 'confirming' || searchParams.get('payment') === 'success');
-  const [provider, setProvider] = useState(likelyNigerian() ? 'paystack' : 'stripe');
-  const pollRef = useRef(null);
-
-  const fetchResult = useCallback(async () => {
-    try {
-      const data = await api.getResult(resultId);
-      setResult(data);
-      return data;
-    } catch {
-      setError('We could not find this result.');
-      return null;
-    }
-  }, [resultId]);
 
   useEffect(() => {
     const storedLead = sessionStorage.getItem('lead');
     if (storedLead) setLead(JSON.parse(storedLead));
-    fetchResult();
-  }, [fetchResult]);
 
-  useEffect(() => {
-    if (!confirming) return;
-    pollRef.current = setInterval(async () => {
-      const data = await fetchResult();
-      if (data?.unlocked) {
-        setConfirming(false);
-        clearInterval(pollRef.current);
-      }
-    }, 2500);
-    return () => clearInterval(pollRef.current);
-  }, [confirming, fetchResult]);
-
-  async function handleUnlock() {
-    setPaying(true);
-    try {
-      const session =
-        provider === 'paystack' ? await api.checkoutPaystack(resultId) : await api.checkoutStripe(resultId);
-      window.location.href = session.checkout_url;
-    } catch {
-      setError('Could not start checkout. Please try again.');
-      setPaying(false);
-    }
-  }
+    api
+      .getResult(resultId)
+      .then(setResult)
+      .catch(() => setError('We could not find this result.'));
+  }, [resultId]);
 
   if (error) {
     return (
@@ -122,11 +76,9 @@ export default function Results() {
 
   return (
     <div className="container" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 640 }}>
-      <p className="pill">
-        {result.unlocked ? 'Full Result — Top 4 Matches' : 'Your Top 2 Matches'}
-      </p>
+      <p className="pill">Your Top {result.recommendations.length} Matches</p>
       <h1 style={{ fontSize: 30, marginTop: 12 }}>
-        {result.unlocked ? 'Here are your top 4 recommended careers' : 'Here are your top 2 recommended careers'}
+        Here are your top {result.recommendations.length} recommended careers
       </h1>
 
       {result.close_call && (
@@ -138,51 +90,6 @@ export default function Results() {
       {result.recommendations.map((rec) => (
         <RecommendationCard key={rec.career.key} recommendation={rec} />
       ))}
-
-      {!result.unlocked && (
-        <div className="card" style={{ padding: 26, marginTop: 8, textAlign: 'center' }}>
-          {!user && (
-            <>
-              <h3>Create a free account to see your top 4 matches</h3>
-              <p>
-                Get 2 more recommendations, with the same full curriculum and reasons — saved to your
-                dashboard, free forever.
-              </p>
-              <Link to="/signup" className="btn btn-primary btn-block" style={{ textDecoration: 'none', marginBottom: 20 }}>
-                Sign up free →
-              </Link>
-              <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 12px 0' }}>
-                — or unlock your top 4 for $1 without an account —
-              </p>
-            </>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 18 }}>
-            <button
-              className={provider === 'stripe' ? 'btn btn-primary' : 'btn btn-outline'}
-              onClick={() => setProvider('stripe')}
-              type="button"
-            >
-              Pay with card (international)
-            </button>
-            <button
-              className={provider === 'paystack' ? 'btn btn-primary' : 'btn btn-outline'}
-              onClick={() => setProvider('paystack')}
-              type="button"
-            >
-              Pay with Nigerian card/bank
-            </button>
-          </div>
-
-          <p style={{ fontSize: 13, marginBottom: 16 }}>
-            {provider === 'stripe' ? '$1.00 USD' : '$1 USD (~₦1,500)'}
-          </p>
-
-          <button className="btn btn-outline btn-block" onClick={handleUnlock} disabled={paying || confirming}>
-            {confirming ? 'Confirming payment…' : paying ? 'Redirecting…' : 'Unlock Top 4 Matches — $1'}
-          </button>
-        </div>
-      )}
 
       {lead && <ConsultationCTA leadId={lead.id} />}
     </div>

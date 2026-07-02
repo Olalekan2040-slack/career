@@ -34,8 +34,8 @@ export default function Signup() {
       <p className="pill">Free account</p>
       <h1 style={{ fontSize: 28, marginTop: 12 }}>Create your account</h1>
       <p>
-        Save every assessment you take, with full strengths and course outline in your dashboard — no $1
-        charge required.
+        Takes about a minute. Every assessment you take is saved to your personal dashboard with full
+        strengths and course outlines.
       </p>
 
       <form onSubmit={handleSubmit} className="card" style={{ padding: 24, marginTop: 20 }}>
