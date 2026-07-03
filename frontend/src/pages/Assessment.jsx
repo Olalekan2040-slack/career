@@ -286,8 +286,13 @@ export default function Assessment() {
     try {
       const elapsedSeconds = (Date.now() - startTime) / 1000;
       const answers = buildAnswersFromHistory(updatedHistory);
-      const skipped_ids = buildSkippedIdsFromHistory(updatedHistory);
-      const next = await api.getNextQuestion({ intake: intakeValues, answers, skipped_ids, elapsed_seconds });
+      const skippedIds = buildSkippedIdsFromHistory(updatedHistory);
+      const next = await api.getNextQuestion({
+        intake: intakeValues,
+        answers,
+        skipped_ids: skippedIds,
+        elapsed_seconds: elapsedSeconds,
+      });
 
       if (next.done || !next.next) {
         await finalizeSubmission(answers);
