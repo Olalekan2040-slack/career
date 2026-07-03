@@ -108,7 +108,7 @@ FORCED_CHOICE_QUESTIONS = [
         "B": {"text": "Writing the actual code the team ships", "competencies": {"SYS": 4, "TCUR": 3}, "careers_influenced": ["BWD", "FSD", "FWD"]}}},
     {"id": "fc_q6", "text": "Which excites you more?", "options": {
         "A": {"text": "Finding a security hole before attackers do", "competencies": {"SYS": 4, "RISK": 3}, "careers_influenced": ["CYB", "ETH", "SR"]},
-        "B": {"text": "Building the cloud servers the app runs on", "competencies": {"SYS": 4, "TCUR": 3}, "careers_influenced": ["CLD", "DVO", "SA"]}}},
+        "B": {"text": "Building the cloud servers the app runs on", "hint": "\"Cloud\" just means renting computers over the internet (like the ones behind Netflix or Instagram) instead of owning physical machines.", "competencies": {"SYS": 4, "TCUR": 3}, "careers_influenced": ["CLD", "DVO", "SA"]}}},
     {"id": "fc_q7", "text": "Which task would you volunteer for?", "options": {
         "A": {"text": "Interviewing users to learn what frustrates them about an app", "competencies": {"EMP": 4, "RES": 4}, "careers_influenced": ["UXR", "MR"]},
         "B": {"text": "Redesigning the app based on that feedback", "competencies": {"CR": 4, "VT": 4}, "careers_influenced": ["UX", "PDS"]}}},
@@ -119,8 +119,8 @@ FORCED_CHOICE_QUESTIONS = [
         "A": {"text": "Being the person who always finds the bug no one else can find", "competencies": {"DET": 5, "PER": 4}, "careers_influenced": ["QA", "SR"]},
         "B": {"text": "Being the person who always has a creative idea no one else thought of", "competencies": {"CR": 5, "INNOV": 4}, "careers_influenced": ["GD", "MG", "TEN"]}}},
     {"id": "fc_q10", "text": "Pick one.", "options": {
-        "A": {"text": "Setting up databases so information is well organized", "competencies": {"ORG": 4, "DET": 4}, "careers_influenced": ["DBA", "DE"]},
-        "B": {"text": "Setting up dashboards so people can see that information visually", "competencies": {"VT": 4, "ANA": 3}, "careers_influenced": ["BI", "DAN"]}}},
+        "A": {"text": "Setting up databases so information is well organized", "hint": "A database is just an organized digital filing system — like a giant, searchable spreadsheet.", "competencies": {"ORG": 4, "DET": 4}, "careers_influenced": ["DBA", "DE"]},
+        "B": {"text": "Setting up dashboards so people can see that information visually", "hint": "A dashboard is a screen of charts and summaries at a glance — like a car dashboard, but for data.", "competencies": {"VT": 4, "ANA": 3}, "careers_influenced": ["BI", "DAN"]}}},
     {"id": "fc_q11", "text": "Which sounds better?", "options": {
         "A": {"text": "Selling a technical product to a business client", "competencies": {"COM": 4, "BUS": 3}, "careers_influenced": ["TSL", "BD"]},
         "B": {"text": "Supporting that same client after they've bought it", "competencies": {"EMP": 4, "COM": 3}, "careers_influenced": ["CSU", "TS", "ITS"]}}},
@@ -129,12 +129,12 @@ FORCED_CHOICE_QUESTIONS = [
         "B": {"text": "Writing the actual conversation scripts the chatbot uses", "competencies": {"WR": 4, "EMP": 3}, "careers_influenced": ["PE", "ID", "CW"]}}},
     {"id": "fc_q13", "text": "Which would you rather do?", "options": {
         "A": {"text": "Build a business website from scratch using code", "competencies": {"SYS": 4, "TCUR": 3}, "careers_influenced": ["FWD", "FSD", "WP"]},
-        "B": {"text": "Build the same website using a no-code tool", "competencies": {"ORG": 3, "BUS": 3}, "careers_influenced": ["NCD", "LCD", "WP"]}}},
+        "B": {"text": "Build the same website using a no-code tool", "hint": "A \"no-code tool\" lets you build a working website by dragging and dropping, like building with LEGO instead of writing instructions from scratch.", "competencies": {"ORG": 3, "BUS": 3}, "careers_influenced": ["NCD", "LCD", "WP"]}}},
     {"id": "fc_q14", "text": "Pick one.", "options": {
-        "A": {"text": "Mapping out where things are located using geographic data", "competencies": {"ANA": 4, "VT": 3}, "careers_influenced": ["GIS", "DAN"]},
+        "A": {"text": "Mapping out where things are located using geographic data", "hint": "Think Google Maps, but layered with extra data — like which neighbourhoods have the most deliveries.", "competencies": {"ANA": 4, "VT": 3}, "careers_influenced": ["GIS", "DAN"]},
         "B": {"text": "Mapping out how a business's internal processes flow", "competencies": {"BUS": 4, "ORG": 3}, "careers_influenced": ["BA", "ERP", "CRM"]}}},
     {"id": "fc_q15", "text": "Which excites you more?", "options": {
-        "A": {"text": "Training an AI model on a dataset", "competencies": {"NR": 4, "ANA": 4}, "careers_influenced": ["ML", "AI", "DS"]},
+        "A": {"text": "Training an AI model on a dataset", "hint": "This means showing a computer program thousands of examples (a \"dataset\") so it learns to recognise patterns on its own — like showing it 1,000 cat photos so it learns what a cat looks like.", "competencies": {"NR": 4, "ANA": 4}, "careers_influenced": ["ML", "AI", "DS"]},
         "B": {"text": "Writing clear prompts to get useful answers from an existing AI model", "competencies": {"WR": 3, "CUR": 4}, "careers_influenced": ["PE", "AAD", "AIC"]}}},
     {"id": "fc_q16", "text": "Choose one.", "options": {
         "A": {"text": "Recruiting and interviewing candidates for tech roles", "competencies": {"COM": 4, "EMP": 3}, "careers_influenced": ["TR"]},
@@ -150,7 +150,7 @@ FORCED_CHOICE_QUESTIONS = [
         "B": {"text": "Actually standing in front of people teaching it", "competencies": {"TEACH": 5, "COM": 4}, "careers_influenced": ["TT", "TR"]}}},
     {"id": "fc_q20", "text": "Choose one.", "options": {
         "A": {"text": "Managing someone's calendar, inbox, and daily admin tasks remotely", "competencies": {"ORG": 4, "COLLAB": 3}, "careers_influenced": ["VA", "MOF"]},
-        "B": {"text": "Managing a company's customer database and CRM system", "competencies": {"ORG": 4, "DET": 4}, "careers_influenced": ["CRM", "ERP"]}}},
+        "B": {"text": "Managing a company's customer database and CRM system", "hint": "A CRM is just software that keeps track of a company's customers and conversations with them — think of it as a very organized contacts app for a whole business.", "competencies": {"ORG": 4, "DET": 4}, "careers_influenced": ["CRM", "ERP"]}}},
 ]
 
 # ---------------------------------------------------------------------------
@@ -185,7 +185,7 @@ SCENARIO_QUESTIONS = [
     {"id": "scenario_q6", "text": "You're testing a new mobile app before launch. What's your natural approach?", "options": {
         "A": {"text": "Try to break it in every possible way you can imagine", "competencies": {"PER": 5, "DET": 4}, "careers_influenced": ["QA", "SR", "ETH"]},
         "B": {"text": "Focus on whether it feels intuitive and pleasant to use", "competencies": {"VT": 4, "EMP": 3}, "careers_influenced": ["UX", "UXR"]},
-        "C": {"text": "Check whether it performs well under heavy load", "competencies": {"SYS": 4, "ANA": 3}, "careers_influenced": ["DVO", "CLD"]},
+        "C": {"text": "Check whether it performs well under heavy load", "hint": "\"Heavy load\" means lots of people using the app at the exact same time, like a shopping app on Black Friday.", "competencies": {"SYS": 4, "ANA": 3}, "careers_influenced": ["DVO", "CLD"]},
         "D": {"text": "Check whether user data is being handled securely", "competencies": {"SYS": 4, "RISK": 3}, "careers_influenced": ["CYB", "ETH"]}}},
     {"id": "scenario_q7", "text": "A small business owner wants more online customers, on a tight budget. What do you suggest first?", "options": {
         "A": {"text": "Improve their visibility on Google search results", "competencies": {"RES": 4, "ANA": 3}, "careers_influenced": ["SEO"]},
@@ -211,8 +211,8 @@ SCENARIO_QUESTIONS = [
         "A": {"text": "Making sure products are well organised and easy to find", "competencies": {"ORG": 4, "DET": 3}, "careers_influenced": ["NCD", "WP", "ERP"]},
         "B": {"text": "Designing how the store looks and feels", "competencies": {"CR": 4, "VT": 4}, "careers_influenced": ["UX", "GD"]},
         "C": {"text": "Making sure the store shows up when people search for similar products", "competencies": {"RES": 3, "ANA": 3}, "careers_influenced": ["SEO"]},
-        "D": {"text": "Setting up the backend so payments and inventory work correctly", "competencies": {"SYS": 4, "DET": 3}, "careers_influenced": ["BWD", "DBA"]}}},
-    {"id": "scenario_q12", "text": "You're handed a messy, undocumented codebase and asked to fix a bug. What's your approach?", "options": {
+        "D": {"text": "Setting up the backend so payments and inventory work correctly", "hint": "The \"backend\" is everything happening behind the scenes that customers never see — like the system that actually processes a payment when you click \"Buy.\"", "competencies": {"SYS": 4, "DET": 3}, "careers_influenced": ["BWD", "DBA"]}}},
+    {"id": "scenario_q12", "text": "You're handed a messy, undocumented codebase (a large existing pile of computer code someone else wrote, with no explanation of how it works) and asked to fix a bug. What's your approach?", "options": {
         "A": {"text": "Read through methodically until you understand the structure", "competencies": {"PER": 4, "SYS": 4}, "careers_influenced": ["BWD", "QA"]},
         "B": {"text": "Search for how others have solved similar bugs before", "competencies": {"RES": 4, "ADAPT": 3}, "careers_influenced": ["ITS", "QA"]},
         "C": {"text": "Rewrite the confusing part properly while you're in there", "competencies": {"INNOV": 3, "DET": 4}, "careers_influenced": ["FSD", "SA"]},

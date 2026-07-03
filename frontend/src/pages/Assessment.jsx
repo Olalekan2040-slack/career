@@ -103,15 +103,21 @@ function ChoiceQuestion({ question, selectedKey, onAnswer, onSkip }) {
         {question.options.map((opt) => {
           const selected = selectedKey === opt.key;
           return (
-            <button
-              key={opt.key}
-              className={selected ? 'btn btn-primary' : 'btn btn-outline'}
-              style={{ justifyContent: 'flex-start', textAlign: 'left', fontWeight: 400, padding: '16px 18px' }}
-              onClick={() => onAnswer(opt.key)}
-            >
-              <span style={{ fontWeight: 700, marginRight: 10 }}>{opt.key}.</span>
-              {opt.text}
-            </button>
+            <div key={opt.key}>
+              <button
+                className={selected ? 'btn btn-primary' : 'btn btn-outline'}
+                style={{ justifyContent: 'flex-start', textAlign: 'left', fontWeight: 400, padding: '16px 18px', width: '100%' }}
+                onClick={() => onAnswer(opt.key)}
+              >
+                <span style={{ fontWeight: 700, marginRight: 10 }}>{opt.key}.</span>
+                {opt.text}
+              </button>
+              {opt.hint && (
+                <p style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic', margin: '4px 0 0 4px' }}>
+                  💡 {opt.hint}
+                </p>
+              )}
+            </div>
           );
         })}
       </div>
@@ -155,14 +161,20 @@ function RankingQuestion({ question, selectedOrder, onAnswer, onSkip }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {remaining.map((item) => (
-          <button
-            key={item.key}
-            className="btn btn-outline"
-            style={{ justifyContent: 'flex-start', textAlign: 'left', fontWeight: 400, padding: '16px 18px' }}
-            onClick={() => pick(item.key)}
-          >
-            {item.text}
-          </button>
+          <div key={item.key}>
+            <button
+              className="btn btn-outline"
+              style={{ justifyContent: 'flex-start', textAlign: 'left', fontWeight: 400, padding: '16px 18px', width: '100%' }}
+              onClick={() => pick(item.key)}
+            >
+              {item.text}
+            </button>
+            {item.hint && (
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic', margin: '4px 0 0 4px' }}>
+                💡 {item.hint}
+              </p>
+            )}
+          </div>
         ))}
       </div>
 

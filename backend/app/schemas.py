@@ -59,6 +59,7 @@ class LeadOut(BaseModel):
 class QuestionOptionOut(BaseModel):
     key: str
     text: str
+    hint: Optional[str] = None
 
 
 class LikertQuestionOut(BaseModel):

@@ -9,10 +9,16 @@ def serialize_question(section: str, question: dict) -> dict:
         return {
             "id": question["id"],
             "text": question["text"],
-            "items": [{"key": key, "text": item["text"]} for key, item in question["items"].items()],
+            "items": [
+                {"key": key, "text": item["text"], "hint": item.get("hint")}
+                for key, item in question["items"].items()
+            ],
         }
     return {
         "id": question["id"],
         "text": question["text"],
-        "options": [{"key": key, "text": opt["text"]} for key, opt in question["options"].items()],
+        "options": [
+            {"key": key, "text": opt["text"], "hint": opt.get("hint")}
+            for key, opt in question["options"].items()
+        ],
     }

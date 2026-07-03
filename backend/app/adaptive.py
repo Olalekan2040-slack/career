@@ -38,6 +38,13 @@ MAX_QUESTIONS = 30
 TIME_CAP_SECONDS = 270  # 4.5 minutes — leaves buffer under the 5-minute target
 CONFIDENCE_GAP = 0.12
 
+# Questions/options carrying a plain-language "hint" reference a technical
+# term. They're still answerable (the hint explains the jargon), but for a
+# respondent with no prior tech exposure we'd still rather ask a
+# plain-language question first when one is available — this multiplies down
+# (not out) a jargon-heavy candidate's selection score for that group.
+JARGON_PENALTY_FOR_BEGINNERS = 0.4
+
 ALL_SECTIONS = {
     "likert": LIKERT_QUESTIONS,
     "forced_choice": FORCED_CHOICE_QUESTIONS,
@@ -60,6 +67,13 @@ def _question_competency_weight(section: str, question: dict) -> dict[str, float
         for competency, weight in group["competencies"].items():
             totals[competency] = totals.get(competency, 0.0) + weight
     return {c: w / count for c, w in totals.items()} if count else {}
+
+
+def _has_jargon(section: str, question: dict) -> bool:
+    if section == "likert":
+        return False  # Likert statements in this bank are already plain language.
+    groups = question["items"].values() if section == "ranking" else question["options"].values()
+    return any(group.get("hint") for group in groups)
 
 
 def _all_unanswered(answered_ids: set[str]):
@@ -93,12 +107,16 @@ def select_next_question(intake: dict, answers: dict, skipped_ids: set[str] | No
     if not candidates:
         return None
 
+    is_beginner = intake.get("tech_exposure") == "none"
+
     if total_answered < STAGE1_QUESTION_COUNT:
         target_competencies = set(INTEREST_COMPETENCY_MAP.get(intake.get("interest_area"), []))
         scored = []
         for section, question in candidates:
             weights = _question_competency_weight(section, question)
-            affinity = sum(weights.get(c, 0.0) for c in target_competencies)
+            affinity = sum(weights.get(c, 0.0) for c in target_competencies) + 0.01
+            if is_beginner and _has_jargon(section, question):
+                affinity *= JARGON_PENALTY_FOR_BEGINNERS
             scored.append((affinity, section, question))
     else:
         profile = compute_competency_profile(answers)
@@ -113,7 +131,9 @@ def select_next_question(intake: dict, answers: dict, skipped_ids: set[str] | No
         scored = []
         for section, question in candidates:
             weights = _question_competency_weight(section, question)
-            discriminative_value = sum(variance.get(c, 0.0) * w for c, w in weights.items())
+            discriminative_value = sum(variance.get(c, 0.0) * w for c, w in weights.items()) + 0.001
+            if is_beginner and _has_jargon(section, question):
+                discriminative_value *= JARGON_PENALTY_FOR_BEGINNERS
             scored.append((discriminative_value, section, question))
 
     section, question = _pick_weighted(scored)
