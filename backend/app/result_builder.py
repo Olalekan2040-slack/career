@@ -17,6 +17,7 @@ def build_result_out(result: models.Result, force_unlock: bool = False) -> dict:
             "rank": i + 1,
             "score": item["score"],
             "reason": item["reason"],
+            "entry_note": item.get("entry_note"),
             "career": get_career(item["career_key"]),
         }
         for i, item in enumerate(visible)

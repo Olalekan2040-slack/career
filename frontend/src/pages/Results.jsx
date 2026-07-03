@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import ConsultationCTA from '../components/ConsultationCTA';
 
 function RecommendationCard({ recommendation }) {
-  const { career, reason, rank } = recommendation;
+  const { career, reason, rank, entry_note: entryNote } = recommendation;
   return (
     <div className="card" style={{ padding: 24, marginBottom: 16 }}>
       <p className="pill">Recommendation #{rank}</p>
@@ -14,6 +14,19 @@ function RecommendationCard({ recommendation }) {
       <p style={{ fontSize: 14, color: 'var(--accent-dark)', fontStyle: 'italic', marginTop: 10 }}>
         Why this fits: {reason}
       </p>
+      {entryNote && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: '12px 16px',
+            border: '1px dashed var(--accent)',
+            borderRadius: 10,
+            background: 'var(--milk-panel-alt)',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 13 }}>{entryNote}</p>
+        </div>
+      )}
       <p style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--accent-dark)', marginTop: 16 }}>
         Curriculum Path
       </p>

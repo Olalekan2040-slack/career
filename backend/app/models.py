@@ -55,6 +55,17 @@ class AssessmentResponse(Base):
     answers = Column(JSON, nullable=False)
     submitted_at = Column(DateTime, default=datetime.utcnow)
 
+    # Intake / background context — used to branch question selection and to
+    # decide whether an "advanced entry" career recommendation needs a caveat.
+    # Only age_range, education_level, field_of_study, and tech_exposure feed
+    # the logic; gender is optional and collected for reporting only.
+    age_range = Column(String, nullable=True)
+    gender = Column(String, nullable=True)
+    education_level = Column(String, nullable=True)
+    field_of_study = Column(String, nullable=True)
+    tech_exposure = Column(String, nullable=True)  # none | some | significant
+    interest_area = Column(String, nullable=True)
+
     lead = relationship("Lead", back_populates="responses")
     result = relationship("Result", back_populates="response", uselist=False)
 

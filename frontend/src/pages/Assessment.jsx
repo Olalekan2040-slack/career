@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../api/AuthContext';
@@ -11,16 +11,6 @@ const SECTION_LABELS = {
   ranking: 'Rank Your Preferences',
 };
 
-// Target ~20 questions per attempt, proportionally sampled across the 5
-// sections so every format is still represented in a shorter run.
-const SAMPLE_SIZES = {
-  likert: 8,
-  forced_choice: 5,
-  scenario: 3,
-  situational: 2,
-  ranking: 2,
-};
-
 const LIKERT_SCALE = [
   { value: 1, label: 'Strongly Disagree' },
   { value: 2, label: 'Disagree' },
@@ -29,23 +19,53 @@ const LIKERT_SCALE = [
   { value: 5, label: 'Strongly Agree' },
 ];
 
-function shuffle(array) {
-  const copy = [...array];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
+const TIME_TARGET_SECONDS = 300; // 5 minutes
 
-function sampleQuestions(questionSet) {
-  const picked = [];
-  for (const [section, size] of Object.entries(SAMPLE_SIZES)) {
-    const pool = questionSet[section] || [];
-    const chosen = shuffle(pool).slice(0, Math.min(size, pool.length));
-    for (const question of chosen) picked.push({ section, question });
-  }
-  return shuffle(picked);
+function IntakeForm({ schema, values, onChange, onContinue, error }) {
+  const allRequiredAnswered = schema.every((field) => !field.required || values[field.key]);
+
+  return (
+    <div className="container" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 560 }}>
+      <p className="pill">Before we start</p>
+      <h1 style={{ fontSize: 26, marginTop: 12 }}>Tell us a bit about yourself</h1>
+      <p>
+        This helps us ask the right questions for your background and give you a more accurate result —
+        it doesn't judge you, and most fields take one tap.
+      </p>
+
+      <div className="card" style={{ padding: 24, marginTop: 16 }}>
+        {schema.map((field) => (
+          <div key={field.key} style={{ marginBottom: 22 }}>
+            <label style={{ marginBottom: 10 }}>
+              {field.label}
+              {!field.required && <span style={{ fontWeight: 400 }}> (optional)</span>}
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {field.options.map((opt) => {
+                const selected = values[field.key] === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    className={selected ? 'btn btn-primary' : 'btn btn-outline'}
+                    style={{ padding: '10px 16px', fontWeight: 400, fontSize: 14 }}
+                    onClick={() => onChange(field.key, opt.key)}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
+        <button className="btn btn-primary btn-block" disabled={!allRequiredAnswered} onClick={onContinue}>
+          Continue to Assessment →
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function LikertQuestion({ question, selectedValue, onAnswer, onSkip }) {
@@ -160,105 +180,158 @@ function RankingQuestion({ question, selectedOrder, onAnswer, onSkip }) {
   );
 }
 
+function answerValue(section, entry) {
+  if (!entry || entry.skipped) return undefined;
+  return entry.value;
+}
+
+function buildAnswersFromHistory(history) {
+  const answers = { likert: {}, forced_choice: {}, scenario: {}, situational: {}, ranking: {} };
+  for (const entry of history) {
+    if (entry.skipped) continue;
+    answers[entry.section][entry.question.id] = entry.value;
+  }
+  return answers;
+}
+
+function buildSkippedIdsFromHistory(history) {
+  return history.filter((e) => e.skipped).map((e) => e.question.id);
+}
+
 export default function Assessment() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [lead, setLead] = useState(null);
-  const [steps, setSteps] = useState(null);
-  const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState({
-    likert: {},
-    forced_choice: {},
-    scenario: {},
-    situational: {},
-    ranking: {},
-  });
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [intakeSchema, setIntakeSchema] = useState(null);
+  const [intakeValues, setIntakeValues] = useState({});
+  const [intakeError, setIntakeError] = useState('');
+  const [stage, setStage] = useState('loading'); // loading | intake | questions | submitting
+  const [history, setHistory] = useState([]);
+  const [pointer, setPointer] = useState(0);
+  const [fetching, setFetching] = useState(false);
+  const [startTime, setStartTime] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (authLoading) return;
 
-    async function initLead() {
-      const storedLead = sessionStorage.getItem('lead');
+    async function init() {
       if (!user) {
-        // Taking the assessment requires an account — an assessment session
-        // (lead) is always tied to the signed-in user's id.
         sessionStorage.removeItem('lead');
         navigate('/signup');
-        return false;
+        return;
       }
+      const storedLead = sessionStorage.getItem('lead');
+      let currentLead;
       if (storedLead) {
-        setLead(JSON.parse(storedLead));
-        return true;
+        currentLead = JSON.parse(storedLead);
+      } else {
+        currentLead = await api.createLead({ name: user.name, email: user.email, consent_given: true });
+        sessionStorage.setItem('lead', JSON.stringify(currentLead));
       }
-      const newLead = await api.createLead({ name: user.name, email: user.email, consent_given: true });
-      sessionStorage.setItem('lead', JSON.stringify(newLead));
-      setLead(newLead);
-      return true;
+      setLead(currentLead);
+
+      const schema = await api.getIntakeSchema();
+      setIntakeSchema(schema);
+      setStage('intake');
     }
 
-    initLead().then((ready) => {
-      if (!ready) return;
-      api
-        .getQuestions()
-        .then((questionSet) => setSteps(sampleQuestions(questionSet)))
-        .catch(() => setError('Could not load the assessment. Please refresh the page.'))
-        .finally(() => setLoading(false));
-    });
+    init().catch(() => setError('Could not load the assessment. Please refresh the page.'));
   }, [navigate, user, authLoading]);
 
-  const answeredCount = Object.values(answers).reduce((sum, section) => sum + Object.keys(section).length, 0);
+  function handleIntakeChange(key, value) {
+    setIntakeValues((prev) => ({ ...prev, [key]: value }));
+  }
 
-  async function submitNow(finalAnswers) {
-    setSubmitting(true);
+  async function handleIntakeContinue() {
+    setIntakeError('');
+    setFetching(true);
+    setStartTime(Date.now());
+    try {
+      const next = await api.getNextQuestion({ intake: intakeValues, answers: {}, skipped_ids: [], elapsed_seconds: 0 });
+      if (next.done || !next.next) {
+        setIntakeError('Could not start the assessment. Please try again.');
+        return;
+      }
+      setHistory([{ section: next.next.section, question: next.next.question, value: null, skipped: false }]);
+      setPointer(0);
+      setStage('questions');
+    } catch (err) {
+      setIntakeError(err.message || 'Could not start the assessment.');
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  async function advance(updatedHistory, newPointer) {
+    if (newPointer < updatedHistory.length) {
+      // Already-fetched question — just move the pointer, no network call.
+      setPointer(newPointer);
+      return;
+    }
+
+    setFetching(true);
+    try {
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+      const answers = buildAnswersFromHistory(updatedHistory);
+      const skipped_ids = buildSkippedIdsFromHistory(updatedHistory);
+      const next = await api.getNextQuestion({ intake: intakeValues, answers, skipped_ids, elapsed_seconds });
+
+      if (next.done || !next.next) {
+        await finalizeSubmission(answers);
+        return;
+      }
+      setHistory([...updatedHistory, { section: next.next.section, question: next.next.question, value: null, skipped: false }]);
+      setPointer(newPointer);
+    } catch (err) {
+      setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  function recordAnswer(value) {
+    const updated = history.map((entry, i) => (i === pointer ? { ...entry, value, skipped: false } : entry));
+    setHistory(updated);
+    advance(updated, pointer + 1);
+  }
+
+  function skipCurrent() {
+    const updated = history.map((entry, i) => (i === pointer ? { ...entry, value: null, skipped: true } : entry));
+    setHistory(updated);
+    advance(updated, pointer + 1);
+  }
+
+  function goBack() {
+    if (pointer > 0) setPointer(pointer - 1);
+  }
+
+  async function finalizeSubmission(answers) {
+    setStage('submitting');
     setError('');
     try {
-      const result = await api.submitAssessment({ lead_id: lead.id, answers: finalAnswers });
+      const result = await api.submitAssessment({ lead_id: lead.id, intake: intakeValues, answers });
       sessionStorage.removeItem('lead');
       navigate(`/results/${result.id}`);
     } catch (err) {
       setError(err.message || 'Something went wrong submitting your assessment. Please try again.');
-      setSubmitting(false);
+      setStage('questions');
     }
-  }
-
-  function recordAnswer(section, questionId, value) {
-    const updated = { ...answers, [section]: { ...answers[section], [questionId]: value } };
-    setAnswers(updated);
-    advance(updated);
-  }
-
-  function skipCurrent() {
-    advance(answers);
-  }
-
-  function advance(currentAnswers) {
-    if (index + 1 >= steps.length) {
-      submitNow(currentAnswers);
-      return;
-    }
-    setIndex(index + 1);
-  }
-
-  function goBack() {
-    if (index > 0) setIndex(index - 1);
   }
 
   function finishNow() {
-    submitNow(answers);
+    finalizeSubmission(buildAnswersFromHistory(history));
   }
 
-  if (loading || submitting || !steps) {
+  if (stage === 'loading' || (stage === 'intake' && !intakeSchema)) {
     return (
       <div className="container" style={{ paddingTop: 80, textAlign: 'center' }}>
-        <p>{submitting ? 'Scoring your results…' : 'Loading…'}</p>
+        <p>Loading…</p>
       </div>
     );
   }
 
-  if (error && !steps.length) {
+  if (error && stage !== 'questions') {
     return (
       <div className="container" style={{ paddingTop: 80, textAlign: 'center' }}>
         <p style={{ color: 'var(--danger)' }}>{error}</p>
@@ -266,20 +339,39 @@ export default function Assessment() {
     );
   }
 
-  const current = steps[index];
+  if (stage === 'intake') {
+    return (
+      <IntakeForm
+        schema={intakeSchema}
+        values={intakeValues}
+        onChange={handleIntakeChange}
+        onContinue={handleIntakeContinue}
+        error={intakeError}
+      />
+    );
+  }
+
+  if (stage === 'submitting' || fetching && history.length === 0) {
+    return (
+      <div className="container" style={{ paddingTop: 80, textAlign: 'center' }}>
+        <p>{stage === 'submitting' ? 'Scoring your results…' : 'Loading…'}</p>
+      </div>
+    );
+  }
+
+  const current = history[pointer];
   if (!current) return null;
 
-  const progressPct = Math.round(((index + 1) / steps.length) * 100);
-  const existingAnswer = answers[current.section][current.question.id];
+  const answeredCount = history.filter((e) => !e.skipped && e.value !== null).length;
+  const elapsedSeconds = startTime ? (Date.now() - startTime) / 1000 : 0;
+  const progressPct = Math.min(100, Math.round((elapsedSeconds / TIME_TARGET_SECONDS) * 100));
 
   return (
     <div className="container" style={{ paddingTop: 40, paddingBottom: 40, maxWidth: 600 }}>
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>{SECTION_LABELS[current.section]}</p>
-          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
-            {index + 1} / {steps.length}
-          </p>
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>Question {pointer + 1} · ~5 min total</p>
         </div>
         <div
           style={{
@@ -301,30 +393,36 @@ export default function Assessment() {
         </div>
       </div>
 
-      {current.section === 'likert' && (
+      {fetching && (
+        <div className="card" style={{ padding: 28, textAlign: 'center' }}>
+          <p>Loading next question…</p>
+        </div>
+      )}
+
+      {!fetching && current.section === 'likert' && (
         <LikertQuestion
           key={current.question.id}
           question={current.question}
-          selectedValue={existingAnswer}
-          onAnswer={(val) => recordAnswer('likert', current.question.id, val)}
+          selectedValue={answerValue(current.section, current)}
+          onAnswer={recordAnswer}
           onSkip={skipCurrent}
         />
       )}
-      {(current.section === 'forced_choice' || current.section === 'scenario' || current.section === 'situational') && (
+      {!fetching && (current.section === 'forced_choice' || current.section === 'scenario' || current.section === 'situational') && (
         <ChoiceQuestion
           key={current.question.id}
           question={current.question}
-          selectedKey={existingAnswer}
-          onAnswer={(val) => recordAnswer(current.section, current.question.id, val)}
+          selectedKey={answerValue(current.section, current)}
+          onAnswer={recordAnswer}
           onSkip={skipCurrent}
         />
       )}
-      {current.section === 'ranking' && (
+      {!fetching && current.section === 'ranking' && (
         <RankingQuestion
           key={current.question.id}
           question={current.question}
-          selectedOrder={existingAnswer}
-          onAnswer={(val) => recordAnswer('ranking', current.question.id, val)}
+          selectedOrder={current.skipped ? null : current.value}
+          onAnswer={recordAnswer}
           onSkip={skipCurrent}
         />
       )}
@@ -332,7 +430,7 @@ export default function Assessment() {
       {error && <p style={{ color: 'var(--danger)', marginTop: 12 }}>{error}</p>}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
-        <div>{index > 0 && <button className="btn btn-outline" onClick={goBack}>← Back</button>}</div>
+        <div>{pointer > 0 && <button className="btn btn-outline" onClick={goBack}>← Back</button>}</div>
         {answeredCount > 0 && (
           <button className="btn btn-accent" onClick={finishNow}>
             Finish now & see my results →

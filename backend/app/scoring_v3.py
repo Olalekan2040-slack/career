@@ -20,6 +20,9 @@ from .data.questions_v3 import (
     SCENARIO_QUESTIONS,
     SITUATIONAL_QUESTIONS,
 )
+from .data.shortlist import SHORTLIST, build_entry_note
+
+SHORTLIST_MATRIX = {key: weights for key, weights in CAREER_MATRIX.items() if key in SHORTLIST}
 
 RANK_MULTIPLIERS = [1.0, 0.75, 0.5, 0.25]
 
@@ -97,13 +100,13 @@ def total_answered_count(answers: dict) -> int:
 
 def rank_careers(profile: dict[str, float]) -> list[tuple[str, float]]:
     scores = {}
-    for career, weights in CAREER_MATRIX.items():
+    for career, weights in SHORTLIST_MATRIX.items():
         scores[career] = sum(profile.get(competency, 0.0) * weight for competency, weight in weights.items())
     return sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
 
 
 def build_reason(career_key: str, profile: dict[str, float], limit: int = 2) -> str:
-    weights = CAREER_MATRIX.get(career_key, {})
+    weights = SHORTLIST_MATRIX.get(career_key, {})
     contributions = sorted(
         ((competency, profile.get(competency, 0.0) * weight) for competency, weight in weights.items()),
         key=lambda kv: kv[1],
@@ -117,7 +120,7 @@ def build_reason(career_key: str, profile: dict[str, float], limit: int = 2) -> 
     return f"Your strengths in {' and '.join(top)} closely match this career."
 
 
-def compute_recommendations(answers: dict, count: int) -> list[dict]:
+def compute_recommendations(answers: dict, count: int, tech_exposure: str | None = None) -> list[dict]:
     if total_answered_count(answers) == 0:
         raise ScoringError("Please answer at least one question before submitting.")
 
@@ -131,6 +134,7 @@ def compute_recommendations(answers: dict, count: int) -> list[dict]:
                 "career_key": career_key,
                 "score": round(score, 4),
                 "reason": build_reason(career_key, profile),
+                "entry_note": build_entry_note(career_key, tech_exposure),
             }
         )
     return recommendations

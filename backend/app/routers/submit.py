@@ -58,13 +58,23 @@ def submit_assessment(
         raise HTTPException(status_code=403, detail="This assessment session belongs to a different account")
 
     answers = payload.answers.model_dump()
+    intake = payload.intake.model_dump()
 
-    response = models.AssessmentResponse(lead_id=lead.id, answers=answers)
+    response = models.AssessmentResponse(
+        lead_id=lead.id,
+        answers=answers,
+        age_range=intake.get("age_range"),
+        gender=intake.get("gender"),
+        education_level=intake.get("education_level"),
+        field_of_study=intake.get("field_of_study"),
+        tech_exposure=intake.get("tech_exposure"),
+        interest_area=intake.get("interest_area"),
+    )
     db.add(response)
     db.flush()
 
     try:
-        recommendations = compute_recommendations(answers, count=4)
+        recommendations = compute_recommendations(answers, count=4, tech_exposure=intake.get("tech_exposure"))
     except ScoringError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

@@ -94,8 +94,48 @@ class AssessmentAnswers(BaseModel):
     ranking: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class IntakeAnswers(BaseModel):
+    age_range: Optional[str] = None
+    gender: Optional[str] = None
+    education_level: Optional[str] = None
+    field_of_study: Optional[str] = None
+    tech_exposure: Optional[str] = None
+    interest_area: Optional[str] = None
+
+
+class IntakeOptionOut(BaseModel):
+    key: str
+    label: str
+
+
+class IntakeFieldOut(BaseModel):
+    key: str
+    label: str
+    required: bool
+    options: list[IntakeOptionOut]
+
+
+class NextQuestionRequest(BaseModel):
+    intake: IntakeAnswers = Field(default_factory=IntakeAnswers)
+    answers: AssessmentAnswers = Field(default_factory=AssessmentAnswers)
+    skipped_ids: list[str] = Field(default_factory=list)
+    elapsed_seconds: float = 0
+
+
+class NextQuestionOut(BaseModel):
+    section: str
+    question: dict
+
+
+class NextQuestionResponse(BaseModel):
+    done: bool
+    total_answered: int
+    next: Optional[NextQuestionOut] = None
+
+
 class SubmitRequest(BaseModel):
     lead_id: str
+    intake: IntakeAnswers = Field(default_factory=IntakeAnswers)
     answers: AssessmentAnswers
 
 
@@ -112,6 +152,7 @@ class RecommendationOut(BaseModel):
     rank: int
     score: float
     reason: str
+    entry_note: Optional[str] = None
     career: CareerOut
 
 

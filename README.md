@@ -1,14 +1,20 @@
 # Global Digital Skills Career Assessment Platform
 
-A free career assessment that maps a person's real strengths onto 69 digital
-careers using a genuine psychometric instrument: an 88-question bank across 5
-formats (Likert agreement, forced-choice, scenario-based, situational
-judgment, and preference ranking), scoring 24 underlying competencies which
-are then projected onto the career space. Each session samples a focused,
-randomised ~20 questions from the full bank. A free account (name, email,
-password) is required to take the assessment; every result is saved to a
-personal dashboard with the top 4 recommended careers, each with a
-plain-language reason and a full course outline. Built per
+A career assessment purpose-built for people who are new to tech and don't
+yet know their own aptitude — not a quiz for people who've already decided
+what they want. A short background intake (age range, education, field of
+study, prior tech exposure, and broader interests) branches an **adaptive**
+question flow drawn from an 88-item, 5-format psychometric bank (Likert
+agreement, forced-choice, scenario-based, situational judgment, and
+preference ranking), scoring 24 underlying competencies. The number of
+questions asked isn't fixed — the engine keeps asking, picking whichever
+next question best separates the current leading candidates, until it's
+confident or ~5 minutes have passed. A free account (name, email, password)
+is required; every result is saved to a personal dashboard with the top 4
+recommended careers from a curated 28-career shortlist, each with a
+plain-language reason, a full course outline, and — for careers that
+usually assume prior technical exposure — a caveat pointing to an easier
+starting point if the respondent flagged none. Built per
 `Tech_Career_Assessment_PRD_v2.md` and the
 `Comprehensive_Question_Bank_Psychometric.docx`.
 
@@ -17,34 +23,73 @@ plain-language reason and a full course outline. Built per
 - **Backend**: FastAPI (Python) + SQLAlchemy (SQLite locally, Postgres in production)
 - **Frontend**: React (Vite) + React Router
 - **Auth**: Email + password, signed expiring tokens (no external JWT library)
-- **Payments**: Stripe + Paystack integration exists in the backend (test-mode) but is not currently surfaced in the UI — see "Accounts, admin, and payments" below
+- **Payments**: Stripe + Paystack integration exists in the backend but is deactivated platform-wide (`PAYMENTS_ENABLED=false`) — see "Accounts, admin, and payments" below
 - **Email**: Gmail SMTP (App Password, port 465/SSL), styled HTML templates in a milky/cream theme
 
 ## The assessment engine
 
+- **Background intake** (`backend/app/data/intake.py`): age range, education
+  level, field of study, prior tech exposure, and a broad interest area
+  (technology, business, arts, people, science, or hands-on work) — collected
+  before any competency question. Age/education/gender are for context and
+  reporting only; field of study, tech exposure, and interest area actively
+  drive question selection and result caveats.
 - **24 competencies** measured (Logical Reasoning, Creativity, Systems Thinking, Business Thinking, etc. — see `backend/app/data/competencies.py`)
-- **88 questions**, 5 section types (`backend/app/data/questions_v3.py`):
-  - Section A — 35 Likert (1-5 agreement) statements
-  - Section B — 20 forced-choice (pick one of two)
-  - Section C — 15 scenario-based (pick one of four reactions)
-  - Section D — 10 situational judgment (pick one of four, no "correct" answer)
-  - Section E — 8 preference-ranking (order 4 items most→least appealing)
-- **69 careers** with full curricula (`backend/app/data/careers.py`) — the source document's Career Legend header says "70" but only 69 are actually enumerated
+- **88-question bank**, 5 section types (`backend/app/data/questions_v3.py`):
+  Likert (35), forced-choice (20), scenario-based (15), situational judgment
+  (10), preference ranking (8) — see the module docstring for the full
+  breakdown.
+- **Adaptive selection, not a fixed set** (`backend/app/adaptive.py`): the
+  first ~8 questions are weighted toward competencies related to the
+  respondent's stated interest area (branching on their background from
+  question 1, not sampling randomly). After that, each new question is
+  chosen based on which competency would most separate the current top-5
+  candidate careers — an honest, practical approximation of adaptive testing
+  (not full Item Response Theory, which needs item parameters calibrated
+  from response data this platform doesn't have yet). The test stops when a
+  confidence gap opens up between the leading and 5th-ranked career (minimum
+  12 questions), a hard cap of 30 questions is hit, or ~4.5 minutes have
+  elapsed — whichever comes first.
+- **28-career shortlist** (`backend/app/data/shortlist.py`): recommendations
+  are drawn only from a curated subset of the full 69-career taxonomy —
+  Full-Stack/Frontend/Backend Dev, AI, ML, UI/UX, Graphic Design, Video
+  Editing, Content Writing, Social Media Management, Virtual Assistance,
+  Data Analysis, Data Science, Cloud Computing, Cybersecurity, Mobile Dev,
+  QA, Animation, Data Engineering, Digital Marketing, SEO, Technical
+  Writing, Product/Project Management, DevOps, IT Support, Motion Graphics,
+  and Copywriting — chosen for a beginner audience that needs a short,
+  confident list rather than an exhaustive catalogue.
+- **Entry-level caveats**: 10 of those 28 (Full-Stack, Backend, AI, ML, Data
+  Science, Cloud Computing, Cybersecurity, Mobile Dev, Data Engineering,
+  DevOps) are flagged as usually needing prior programming/technical
+  exposure. If a respondent who flagged no tech exposure still matches one
+  strongly, it's still shown (not hidden), but with a note naming an easier
+  starting point (e.g. Cybersecurity → IT Support first).
 - **Derived competency→career matrix** (`backend/app/data/career_matrix.py`): the source document explicitly calls a 24×69 mapping matrix a separate "required artefact" it doesn't provide. Rather than inventing arbitrary weights, this matrix is *derived* from data already in the question bank — every question/option/ranking-item lists both its competency weights and the careers it signals ("careers_influenced"), so summing those signals per career and normalizing produces a fully-traceable matrix without a second hand-authored input. 5 careers (Mobile App Dev, Desktop App Dev, Game Dev, Blockchain Dev, Web3 Dev) are never referenced by any question and got small hand-authored fallback profiles instead.
-- **Scoring** (`backend/app/scoring_v3.py`): partial completion is fully supported — every competency is normalized against the maximum achievable score from only the questions actually answered, so skipping questions doesn't unfairly zero out a trait. Final career scores come from a dot product against the derived matrix; the top-ranked careers become recommendations, each with a plain-language "why this fits" reason drawn from its highest-contributing competencies.
+- **Scoring** (`backend/app/scoring_v3.py`): partial completion is fully supported — every competency is normalized against the maximum achievable score from only the questions actually answered, so skipping questions doesn't unfairly zero out a trait. Final career scores come from a dot product against the derived matrix (restricted to the 28-career shortlist); the top-ranked careers become recommendations, each with a plain-language "why this fits" reason drawn from its highest-contributing competencies.
+
+**On accuracy — an honest limit.** No short self-report questionnaire, adaptive
+or not, can reliably surface traits a person is genuinely blind to (that's
+what projective testing or long behavioral observation is for). What this
+engine does to get meaningfully closer: indirect scenario/forced-choice items
+(which reveal more than direct self-rating), and a competency profile that's
+independent of self-reported tech interest — so a gap between what someone
+says excites them and what their answers show can surface as a genuine
+insight rather than just confirming what they already believed about themselves.
 
 ## Project layout
 
 ```
 backend/            FastAPI app
   app/
-    data/            competencies, 88-question bank, career matrix, career curricula
-    routers/         API endpoints (auth, dashboard, leads, questions, submit, result, checkout, webhooks, consultation)
+    data/            competencies, 88-question bank, career matrix, curricula, shortlist, intake schema
+    routers/         API endpoints (auth, admin, assessment, dashboard, leads, questions, submit, result, checkout, webhooks, consultation)
     main.py           app entrypoint
-    auth.py           password hashing + signed token auth
+    auth.py           password hashing + signed token auth + admin flag sync
+    adaptive.py        question selection + stopping logic
     scoring_v3.py      competency scoring + career ranking + reason generation
     email_service.py  HTML email templates + SMTP sending
-    payments.py        Stripe + Paystack integration
+    payments.py        Stripe + Paystack integration (deactivated by default)
 frontend/            React (Vite) app
   src/
     pages/            Landing, Assessment, Results, Signup, Login, Dashboard, Admin
@@ -87,6 +132,7 @@ Open the printed local URL (default `http://localhost:5173`).
 | `SECRET_KEY` | Random secret signing auth tokens — generate your own for production (`python -c "import secrets; print(secrets.token_hex(32))"`) |
 | `ADMIN_EMAILS` | Comma-separated emails auto-granted admin access (`/admin` user list) on signup/login |
 | `SMTP_USER` / `SMTP_APP_PASSWORD` | Gmail address + [App Password](https://myaccount.google.com/apppasswords) used to send result emails |
+| `PAYMENTS_ENABLED` | `false` by default — set to `true` to re-enable the Stripe/Paystack checkout endpoints |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe test/live keys — get from the Stripe Dashboard |
 | `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | Paystack test/live keys |
 | `CONSULTATION_BOOKING_URL` | Calendly/Cal.com link shown after unlock |
@@ -112,11 +158,13 @@ no code changes are needed.
   automatically flagged `is_admin` on signup/login. Admins see an **Admin**
   link in the nav leading to `/admin`, listing every registered user's name,
   email, and join date (`GET /api/admin/users`, 403 for non-admins).
-- **Payments (Stripe/Paystack)**: the backend integration from an earlier
-  version of the product still exists (`backend/app/payments.py`,
-  `routers/checkout.py`, `routers/webhooks.py`) but is no longer surfaced in
-  the UI, since mandatory signup replaced the free/$1-unlock tiering it was
-  built for. It's dormant, not deleted, in case a future paid tier is wanted.
+- **Payments (Stripe/Paystack)**: deactivated platform-wide via
+  `PAYMENTS_ENABLED=false` (default) — `POST /api/checkout/stripe` and
+  `/paystack` both return `503` immediately without calling either provider.
+  The integration itself (`backend/app/payments.py`, `routers/checkout.py`,
+  `routers/webhooks.py`) is untouched and can be re-enabled by flipping that
+  one setting, since mandatory signup already replaced the free/$1-unlock
+  tiering it was originally built for.
 
 ## Deploying to Render
 
@@ -166,26 +214,46 @@ Locally, `DATABASE_URL` is unset and the app falls back to SQLite (`backend/.env
   (`.github/workflows/keep-alive.yml`) pings it every 5 minutes independent of
   traffic. For a stronger guarantee, a dedicated uptime service (e.g. UptimeRobot)
   is more reliable than GitHub's best-effort scheduler.
+- `Base.metadata.create_all()` only creates *missing* tables — it never alters
+  an existing table to add new columns. The intake fields added to
+  `assessment_responses` (age_range, gender, education_level, field_of_study,
+  tech_exposure, interest_area) won't exist on a Postgres database that was
+  already running before this change; submitting an assessment against it
+  will fail with a "column does not exist" error until you either run an
+  `ALTER TABLE` to add them or drop/recreate that table (only safe if it
+  doesn't hold real data you need yet).
 
 ## What's implemented
 
-- Full 88-question, 5-format psychometric bank scoring 24 competencies and
-  ranking all 69 careers; each session samples a randomised ~20-question
-  subset, with partial-completion support (skip any question)
-- Answering a question you've already answered and going back highlights
-  your previous choice so you can review and change it
+- Background intake (age, education, field of study, tech exposure, broad
+  interest area) collected before the assessment, driving both question
+  selection and result caveats
+- Adaptive question selection — no fixed question count; the engine picks
+  each next question based on the respondent's background and answers so
+  far, and stops on a confidence signal or a ~5-minute time cap (12-30
+  questions in practice), not a hard-coded number
+- Recommendations drawn from a curated 28-career shortlist (not the full 69),
+  chosen for a beginner audience
+- Entry-level caveats on 10 "advanced" careers, naming an easier starting
+  point when a respondent with no prior tech exposure still matches strongly
 - Derived competency→career mapping matrix, fully traceable to the source
   question bank (see "The assessment engine" above)
-- Full curriculum + resources for all 69 careers (4-phase outline + 3
-  resources each)
+- Full curriculum + resources for all 69 careers in the underlying taxonomy
+  (4-phase outline + 3 resources each), 28 of which are ever recommended
 - Plain-language "why this fits" reason generated per recommendation
 - Mandatory email + password signup before taking the assessment; every
   result is saved and shows the top 4 recommended careers
 - Admin page (`/admin`) listing every registered user's name, email, and
   join date, gated by `ADMIN_EMAILS`
-- Result emails, milky-themed, with reasons and full curricula included,
-  footer/portfolio link, and a profile photo — sent via a background task so
-  the results page loads immediately instead of waiting on the SMTP round trip
+- Payments (Stripe/Paystack) deactivated via `PAYMENTS_ENABLED=false` —
+  checkout endpoints return 503 immediately, no live provider calls
+- Result emails, milky-themed, with reasons, entry-level caveats, and full
+  curricula included, footer/portfolio link, and a profile photo — sent via a
+  background task so the results page loads immediately instead of waiting
+  on the SMTP round trip
+- Going back to a previously answered question highlights your previous
+  choice so you can review and change it, without breaking the adaptive flow
+  going forward
 - Consultation booking CTA available on every result screen
 - Desktop shortcut (`start_app.bat` + Desktop `.lnk`) to launch both servers
   without a terminal
@@ -196,12 +264,14 @@ Locally, `DATABASE_URL` is unset and the app falls back to SQLite (`backend/.env
 
 ## Not implemented / needs your input before launch
 
-- Payments (Stripe/Paystack) are dormant in the backend but not wired into
-  the UI — see "Accounts, admin, and payments" above
 - Calendly/Cal.com embed — currently a plain link (`CONSULTATION_BOOKING_URL`)
   rather than a live scheduler; the in-app "Book a consultation" form logs the
   request to the database instead of syncing with an external calendar
 - Password reset / email verification for accounts — not built yet
+- The adaptive engine is a practical heuristic, not calibrated Item Response
+  Theory — there's no prior response data yet to calibrate item difficulty
+  against, so "confidence" is measured by score separation between candidate
+  careers rather than a formally validated statistic
 - The 5 careers with no question-bank signal (Mobile App Dev, Desktop App
   Dev, Game Dev, Blockchain Dev, Web3 Dev) use hand-authored fallback
   competency profiles rather than derived ones — reasonable but worth

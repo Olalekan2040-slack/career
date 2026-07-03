@@ -19,6 +19,9 @@ def _get_result_and_lead(db: Session, result_id: str):
 
 @router.post("/stripe", response_model=schemas.CheckoutResponse)
 def checkout_stripe(payload: schemas.CheckoutRequest, db: Session = Depends(get_db)):
+    if not settings.payments_enabled:
+        raise HTTPException(status_code=503, detail="Payments are temporarily unavailable.")
+
     result, lead = _get_result_and_lead(db, payload.result_id)
 
     try:
@@ -44,6 +47,9 @@ def checkout_stripe(payload: schemas.CheckoutRequest, db: Session = Depends(get_
 
 @router.post("/paystack", response_model=schemas.CheckoutResponse)
 def checkout_paystack(payload: schemas.CheckoutRequest, db: Session = Depends(get_db)):
+    if not settings.payments_enabled:
+        raise HTTPException(status_code=503, detail="Payments are temporarily unavailable.")
+
     result, lead = _get_result_and_lead(db, payload.result_id)
 
     try:

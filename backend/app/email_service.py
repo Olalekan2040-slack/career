@@ -73,6 +73,12 @@ def _recommendation_block(rank: int, recommendation: dict) -> str:
     career = recommendation["career"]
     curriculum_items = "".join(f"<li style='margin-bottom:6px;'>{step}</li>" for step in career["curriculum"])
     resource_items = "".join(f"<li style='margin-bottom:6px;'>{res}</li>" for res in career["resources"])
+    entry_note = recommendation.get("entry_note")
+    entry_note_html = (
+        f"""<p style="margin:0 0 14px 0;padding:10px 14px;background:{BRAND_CREAM};border:1px dashed {BRAND_ACCENT};border-radius:8px;font-size:13px;color:{BRAND_INK};">{entry_note}</p>"""
+        if entry_note
+        else ""
+    )
 
     return f"""
     <div style="margin:18px 0;padding:18px 20px;border-radius:10px;background:{BRAND_MILK};">
@@ -82,6 +88,7 @@ def _recommendation_block(rank: int, recommendation: dict) -> str:
       <p style="margin:8px 0 4px 0;font-size:17px;font-weight:700;color:{BRAND_INK};">{career['name']}</p>
       <p style="margin:0 0 10px 0;font-size:13px;color:{BRAND_MUTED};">{career['focus']} &middot; Typical duration: {career['duration']}</p>
       <p style="margin:0 0 14px 0;font-size:13px;color:{BRAND_ACCENT};font-style:italic;">Why this fits: {recommendation['reason']}</p>
+      {entry_note_html}
       <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;color:{BRAND_ACCENT};text-transform:uppercase;letter-spacing:0.5px;">Curriculum Path</p>
       <ul style="margin:0 0 14px 0;padding-left:18px;font-size:14px;color:{BRAND_INK};">{curriculum_items}</ul>
       <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;color:{BRAND_ACCENT};text-transform:uppercase;letter-spacing:0.5px;">Recommended Resources</p>

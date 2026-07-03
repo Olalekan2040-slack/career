@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     smtp_app_password: str = ""
     email_from_name: str = "Global Digital Skills Assessment"
 
+    # Payments are temporarily deactivated platform-wide — signup replaced the
+    # $1 unlock tier. Flip to True to re-enable checkout without other changes.
+    payments_enabled: bool = False
+
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_usd_cents: int = 100
