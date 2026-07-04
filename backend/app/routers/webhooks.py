@@ -24,7 +24,7 @@ def _unlock_result_and_notify(result_id: str) -> None:
         db.commit()
 
         lead = result.response.lead
-        result_out = build_result_out(result, force_unlock=True)
+        result_out = build_result_out(result)
         result_url = f"{settings.frontend_url}/results/{result.id}"
         html = render_recommendations_email(
             lead.name, result_out["recommendations"], True, result_url, settings.consultation_booking_url

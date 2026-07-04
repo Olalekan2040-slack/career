@@ -27,34 +27,18 @@ export default function Navbar() {
         <Link to="/" style={{ fontWeight: 700, fontSize: 16, color: 'var(--ink)', textDecoration: 'none' }}>
           Digital Skills Assessment
         </Link>
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 14 }}>
-          {!loading && user && (
-            <>
-              <Link to="/dashboard" style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 600 }}>
-                Dashboard
-              </Link>
-              {user.is_admin && (
-                <Link to="/admin" style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 600 }}>
-                  Admin
-                </Link>
-              )}
-              <span style={{ color: 'var(--ink-soft)' }}>Hi, {user.name.split(' ')[0]}</span>
-              <button className="btn btn-outline" onClick={handleLogout} style={{ padding: '8px 16px' }}>
-                Log out
-              </button>
-            </>
-          )}
-          {!loading && !user && (
-            <>
-              <Link to="/login" style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 600 }}>
-                Log in
-              </Link>
-              <Link to="/signup" className="btn btn-primary" style={{ padding: '8px 16px', textDecoration: 'none' }}>
-                Sign up free
-              </Link>
-            </>
-          )}
-        </nav>
+        {/* No public sign up/log in — everyone just takes the assessment via name+email.
+            This nav slot only ever shows anything for an already-logged-in admin session. */}
+        {!loading && user && user.is_admin && (
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 14 }}>
+            <Link to="/admin" style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 600 }}>
+              Admin
+            </Link>
+            <button className="btn btn-outline" onClick={handleLogout} style={{ padding: '8px 16px' }}>
+              Log out
+            </button>
+          </nav>
+        )}
       </div>
     </header>
   );

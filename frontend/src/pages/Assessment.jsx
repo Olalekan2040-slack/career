@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import { useAuth } from '../api/AuthContext';
 
 const SECTION_LABELS = {
   likert: 'Agree or Disagree',
@@ -212,7 +211,6 @@ function buildSkippedIdsFromHistory(history) {
 
 export default function Assessment() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
   const [lead, setLead] = useState(null);
   const [intakeSchema, setIntakeSchema] = useState(null);
   const [intakeValues, setIntakeValues] = useState({});
@@ -225,23 +223,13 @@ export default function Assessment() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (authLoading) return;
-
     async function init() {
-      if (!user) {
-        sessionStorage.removeItem('lead');
-        navigate('/signup');
+      const storedLead = sessionStorage.getItem('lead');
+      if (!storedLead) {
+        navigate('/start');
         return;
       }
-      const storedLead = sessionStorage.getItem('lead');
-      let currentLead;
-      if (storedLead) {
-        currentLead = JSON.parse(storedLead);
-      } else {
-        currentLead = await api.createLead({ name: user.name, email: user.email, consent_given: true });
-        sessionStorage.setItem('lead', JSON.stringify(currentLead));
-      }
-      setLead(currentLead);
+      setLead(JSON.parse(storedLead));
 
       const schema = await api.getIntakeSchema();
       setIntakeSchema(schema);
@@ -249,7 +237,7 @@ export default function Assessment() {
     }
 
     init().catch(() => setError('Could not load the assessment. Please refresh the page.'));
-  }, [navigate, user, authLoading]);
+  }, [navigate]);
 
   function handleIntakeChange(key, value) {
     setIntakeValues((prev) => ({ ...prev, [key]: value }));

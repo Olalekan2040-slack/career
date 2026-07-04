@@ -2,7 +2,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..auth import get_current_user
 from ..config import settings
 from ..database import SessionLocal, get_db
 from ..email_service import render_recommendations_email, send_email
@@ -25,12 +24,12 @@ def _send_result_email_task(result_id: str) -> None:
             return
         lead = result.response.lead
 
-        result_out = build_result_out(result, force_unlock=True)
+        result_out = build_result_out(result)
         result_url = f"{settings.frontend_url}/results/{result.id}"
         html = render_recommendations_email(
             lead.name, result_out["recommendations"], True, result_url, settings.consultation_booking_url
         )
-        send_email(lead.email, "Your full Digital Career roadmap — strengths & course outlines", html)
+        send_email(lead.email, "Your Digital Career roadmap — strengths & course outlines", html)
 
         result.paid_email_sent = True
         db.commit()
@@ -45,17 +44,10 @@ def submit_assessment(
     payload: schemas.SubmitRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
 ):
     lead = db.get(models.Lead, payload.lead_id)
     if lead is None:
         raise HTTPException(status_code=404, detail="Lead not found")
-
-    if lead.user_id is None:
-        lead.user_id = current_user.id
-        db.commit()
-    elif lead.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="This assessment session belongs to a different account")
 
     answers = payload.answers.model_dump()
     intake = payload.intake.model_dump()
@@ -93,4 +85,4 @@ def submit_assessment(
 
     background_tasks.add_task(_send_result_email_task, result.id)
 
-    return build_result_out(result, force_unlock=True)
+    return build_result_out(result)

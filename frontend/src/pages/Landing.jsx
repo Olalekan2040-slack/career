@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import { useAuth } from '../api/AuthContext';
 
 const DIFFERENTIATORS = [
   {
@@ -20,7 +19,6 @@ const DIFFERENTIATORS = [
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [meta, setMeta] = useState(null);
 
   useEffect(() => {
@@ -31,7 +29,7 @@ export default function Landing() {
   const competencyCount = meta?.competency_count ?? 24;
 
   function handleStart() {
-    navigate(user ? '/assessment' : '/signup');
+    navigate('/start');
   }
 
   return (
@@ -49,7 +47,7 @@ export default function Landing() {
         <button className="btn btn-primary" style={{ marginTop: 20, padding: '16px 32px', fontSize: 16 }} onClick={handleStart}>
           Get Started Free →
         </button>
-        <p style={{ fontSize: 13, marginTop: 14 }}>Free account required · Takes about 10 minutes</p>
+        <p style={{ fontSize: 13, marginTop: 14 }}>No account needed · Just your name and email · About 5 minutes</p>
       </div>
 
       {/* Stat bar */}
@@ -80,7 +78,7 @@ export default function Landing() {
       {/* How it works */}
       <div className="grid-responsive-3" style={{ marginTop: 24 }}>
         {[
-          { step: '01', title: 'Create your free account', body: 'One minute — name, email, and password. Your results are saved to your personal dashboard.' },
+          { step: '01', title: 'Tell us your name and email', body: 'No account or password needed — just where to send your result.' },
           { step: '02', title: 'Take the assessment', body: 'A focused, randomised set of questions. Skip anything that doesn’t apply, finish whenever you’re ready.' },
           { step: '03', title: 'See your ranked matches', body: 'Your top career matches, each with the reasons why and a full course outline to get started.' },
         ].map((item) => (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../api/AuthContext';
 
 export default function Login() {
@@ -15,8 +15,8 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email.trim(), password);
-      navigate('/dashboard');
+      const user = await login(email.trim(), password);
+      navigate(user.is_admin ? '/admin' : '/');
     } catch (err) {
       setError(err.message || 'Could not log in.');
     } finally {
@@ -26,7 +26,7 @@ export default function Login() {
 
   return (
     <div className="container" style={{ paddingTop: 56, paddingBottom: 40, maxWidth: 440 }}>
-      <p className="pill">Welcome back</p>
+      <p className="pill">Admin</p>
       <h1 style={{ fontSize: 28, marginTop: 12 }}>Log in</h1>
 
       <form onSubmit={handleSubmit} className="card" style={{ padding: 24, marginTop: 20 }}>
@@ -45,10 +45,6 @@ export default function Login() {
           {loading ? 'Logging in…' : 'Log in →'}
         </button>
       </form>
-
-      <p style={{ marginTop: 16, fontSize: 14 }}>
-        Don't have an account? <Link to="/signup">Sign up free</Link>
-      </p>
     </div>
   );
 }

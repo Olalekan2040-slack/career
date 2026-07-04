@@ -14,3 +14,11 @@ def list_users(
     _admin: models.User = Depends(get_current_admin),
 ):
     return db.query(models.User).order_by(models.User.created_at.desc()).all()
+
+
+@router.get("/leads", response_model=list[schemas.AdminLeadOut])
+def list_leads(
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(get_current_admin),
+):
+    return db.query(models.Lead).order_by(models.Lead.created_at.desc()).all()

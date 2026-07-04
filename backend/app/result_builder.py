@@ -7,11 +7,9 @@ CLOSE_CALL_MESSAGE = (
 )
 
 
-def build_result_out(result: models.Result, force_unlock: bool = False) -> dict:
-    effective_unlocked = result.unlocked or force_unlock
-    visible_count = 4 if effective_unlocked else 2
-
-    visible = result.recommendations[:visible_count]
+def build_result_out(result: models.Result) -> dict:
+    """Everyone gets their full set of recommendations — there is no
+    login-gated tiering anymore, just a name+email lead capture."""
     recommendations = [
         {
             "rank": i + 1,
@@ -20,13 +18,13 @@ def build_result_out(result: models.Result, force_unlock: bool = False) -> dict:
             "entry_note": item.get("entry_note"),
             "career": get_career(item["career_key"]),
         }
-        for i, item in enumerate(visible)
+        for i, item in enumerate(result.recommendations)
     ]
 
     return {
         "id": result.id,
-        "unlocked": effective_unlocked,
-        "visible_count": visible_count,
+        "unlocked": True,
+        "visible_count": len(recommendations),
         "close_call": result.close_call,
         "close_call_message": CLOSE_CALL_MESSAGE if result.close_call else None,
         "recommendations": recommendations,

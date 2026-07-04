@@ -9,9 +9,9 @@ agreement, forced-choice, scenario-based, situational judgment, and
 preference ranking), scoring 24 underlying competencies. The number of
 questions asked isn't fixed — the engine keeps asking, picking whichever
 next question best separates the current leading candidates, until it's
-confident or ~5 minutes have passed. A free account (name, email, password)
-is required; every result is saved to a personal dashboard with the top 4
-recommended careers from a curated 28-career shortlist, each with a
+confident or ~5 minutes have passed. No account or password — just a name
+and email — before the top 4 recommended careers (from a curated 28-career
+shortlist) appear on-screen and are emailed in full detail, each with a
 plain-language reason, a full course outline, and — for careers that
 usually assume prior technical exposure — a caveat pointing to an easier
 starting point if the respondent flagged none. Built per
@@ -22,8 +22,8 @@ starting point if the respondent flagged none. Built per
 
 - **Backend**: FastAPI (Python) + SQLAlchemy (SQLite locally, Postgres in production)
 - **Frontend**: React (Vite) + React Router
-- **Auth**: Email + password, signed expiring tokens (no external JWT library)
-- **Payments**: Stripe + Paystack integration exists in the backend but is deactivated platform-wide (`PAYMENTS_ENABLED=false`) — see "Accounts, admin, and payments" below
+- **Auth**: Email + password login exists only for the hidden admin view (`/login` → `/admin`) — regular respondents never see it, see "Accounts, admin, and payments" below
+- **Payments**: Stripe + Paystack integration exists in the backend but is deactivated platform-wide (`PAYMENTS_ENABLED=false`)
 - **Email**: Gmail SMTP (App Password, port 465/SSL), styled HTML templates in a milky/cream theme
 
 ## The assessment engine
@@ -83,7 +83,7 @@ insight rather than just confirming what they already believed about themselves.
 backend/            FastAPI app
   app/
     data/            competencies, 88-question bank, career matrix, curricula, shortlist, intake schema
-    routers/         API endpoints (auth, admin, assessment, dashboard, leads, questions, submit, result, checkout, webhooks, consultation)
+    routers/         API endpoints (auth, admin, assessment, leads, questions, submit, result, checkout, webhooks, consultation)
     main.py           app entrypoint
     auth.py           password hashing + signed token auth + admin flag sync
     adaptive.py        question selection + stopping logic
@@ -92,9 +92,9 @@ backend/            FastAPI app
     payments.py        Stripe + Paystack integration (deactivated by default)
 frontend/            React (Vite) app
   src/
-    pages/            Landing, Assessment, Results, Signup, Login, Dashboard, Admin
+    pages/            Landing, LeadCapture, Assessment, Results, Login (admin), Admin
     components/        Navbar, Footer (with profile photo), ConsultationCTA
-    api/client.js       API client, AuthContext.jsx auth state
+    api/client.js       API client, AuthContext.jsx auth state (admin session only)
 ```
 
 ## Running locally
@@ -147,24 +147,28 @@ no code changes are needed.
 
 ## Accounts, admin, and payments
 
-- **Signup is required** to take the assessment — name, email, and password.
-  There is no anonymous path; `POST /api/leads` and `POST /api/submit` both
-  require a valid auth token (401 otherwise).
-- Every signed-up user sees their **top 4** recommended careers immediately,
-  saved to a personal **Dashboard** (`/dashboard`, lists every assessment
-  taken), and emailed in full detail right after submitting.
-- **Admin access**: any account whose email is listed in the `ADMIN_EMAILS`
-  env var (comma-separated; defaults to `olalekanquadri58@gmail.com`) is
-  automatically flagged `is_admin` on signup/login. Admins see an **Admin**
-  link in the nav leading to `/admin`, listing every registered user's name,
-  email, and join date (`GET /api/admin/users`, 403 for non-admins).
+- **No signup, no password, no login** for respondents. `/start` collects
+  just a name and email (`POST /api/leads`), which flows straight into the
+  assessment. `POST /api/leads` and `POST /api/submit` are both fully public
+  — no auth token involved anywhere in the respondent-facing flow.
+- Everyone who finishes sees their **top 4** recommended careers on-screen
+  immediately, and gets them emailed in full detail (background task, so the
+  results page doesn't wait on the SMTP round trip).
+- **Admin access** is the *only* thing behind a login, and it's not linked
+  from the public nav — it's a plain email+password account (`/login`,
+  reusing the same auth system) whose email is listed in the `ADMIN_EMAILS`
+  env var (comma-separated; defaults to `olalekanquadri58@gmail.com`),
+  auto-flagged `is_admin` on signup/login. Logged-in admins see an **Admin**
+  link leading to `/admin`, listing every respondent's name, email, and
+  submission date (`GET /api/admin/leads`, 403 for non-admins). There's no
+  public "Sign up" page — the admin account is created once via
+  `POST /api/auth/signup` directly (not through any UI).
 - **Payments (Stripe/Paystack)**: deactivated platform-wide via
   `PAYMENTS_ENABLED=false` (default) — `POST /api/checkout/stripe` and
   `/paystack` both return `503` immediately without calling either provider.
   The integration itself (`backend/app/payments.py`, `routers/checkout.py`,
   `routers/webhooks.py`) is untouched and can be re-enabled by flipping that
-  one setting, since mandatory signup already replaced the free/$1-unlock
-  tiering it was originally built for.
+  one setting if a paid tier is wanted again later.
 
 ## Deploying to Render
 
@@ -215,13 +219,12 @@ Locally, `DATABASE_URL` is unset and the app falls back to SQLite (`backend/.env
   traffic. For a stronger guarantee, a dedicated uptime service (e.g. UptimeRobot)
   is more reliable than GitHub's best-effort scheduler.
 - `Base.metadata.create_all()` only creates *missing* tables — it never alters
-  an existing table to add new columns. The intake fields added to
-  `assessment_responses` (age_range, gender, education_level, field_of_study,
-  tech_exposure, interest_area) won't exist on a Postgres database that was
-  already running before this change; submitting an assessment against it
-  will fail with a "column does not exist" error until you either run an
-  `ALTER TABLE` to add them or drop/recreate that table (only safe if it
-  doesn't hold real data you need yet).
+  an existing table to add new columns. If you add columns to a model in the
+  future, either run an `ALTER TABLE` against the live database or drop/recreate
+  the affected table (only safe if it doesn't hold real data you need). The
+  production Postgres database was fully wiped (all tables dropped) as part of
+  this change specifically to pick up the intake columns cleanly — expect an
+  empty `leads`/`results` table on first login to `/admin` after this deploy.
 
 ## What's implemented
 
@@ -241,10 +244,10 @@ Locally, `DATABASE_URL` is unset and the app falls back to SQLite (`backend/.env
 - Full curriculum + resources for all 69 careers in the underlying taxonomy
   (4-phase outline + 3 resources each), 28 of which are ever recommended
 - Plain-language "why this fits" reason generated per recommendation
-- Mandatory email + password signup before taking the assessment; every
-  result is saved and shows the top 4 recommended careers
-- Admin page (`/admin`) listing every registered user's name, email, and
-  join date, gated by `ADMIN_EMAILS`
+- No signup or login for respondents — just name + email before the
+  assessment; results shown on-screen and emailed, no account required
+- Admin page (`/admin`, gated by a hidden `/login` and `ADMIN_EMAILS`)
+  listing every respondent's name, email, and submission date
 - Payments (Stripe/Paystack) deactivated via `PAYMENTS_ENABLED=false` —
   checkout endpoints return 503 immediately, no live provider calls
 - Result emails, milky-themed, with reasons, entry-level caveats, and full

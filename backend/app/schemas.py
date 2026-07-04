@@ -56,6 +56,16 @@ class LeadOut(BaseModel):
         from_attributes = True
 
 
+class AdminLeadOut(BaseModel):
+    id: str
+    name: str
+    email: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class QuestionOptionOut(BaseModel):
     key: str
     text: str
