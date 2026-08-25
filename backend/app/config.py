@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     consultation_booking_url: str = "https://calendly.com/your-handle/consultation"
     portfolio_url: str = "https://quaddev.onrender.com/"
 
+    # Database URL — SQLite for development, PostgreSQL for production
+    # Development default: sqlite:///./assessment.db
+    # Production (Render): postgresql://user:password@host/dbname
+    # or use Render's Internal Database URL from dashboard
     database_url: str = "sqlite:///./assessment.db"
 
     # Comma-separated list of emails auto-granted admin access on signup/login.
@@ -39,6 +43,16 @@ class Settings(BaseSettings):
     @property
     def admin_email_list(self) -> list[str]:
         return [e.strip().lower() for e in self.admin_emails.split(",") if e.strip()]
+
+    @property
+    def is_postgres(self) -> bool:
+        """Check if using PostgreSQL database"""
+        return self.database_url.startswith("postgresql://") or self.database_url.startswith("postgres://")
+
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production environment"""
+        return self.environment.lower() == "production"
 
 
 settings = Settings()
