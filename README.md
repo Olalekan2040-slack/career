@@ -24,7 +24,7 @@ starting point if the respondent flagged none. Built per
 - **Frontend**: React (Vite) + React Router
 - **Auth**: Email + password login exists only for the hidden admin view (`/login` → `/admin`) — regular respondents never see it, see "Accounts, admin, and payments" below
 - **Payments**: Stripe + Paystack integration exists in the backend but is deactivated platform-wide (`PAYMENTS_ENABLED=false`)
-- **Email**: Gmail SMTP (App Password, port 465/SSL), styled HTML templates in a milky/cream theme
+- **Email**: Brevo transactional email HTTP API, styled HTML templates in a milky/cream theme (switched from Gmail SMTP because Render's free web services block outbound SMTP ports 25/465/587)
 
 ## The assessment engine
 
@@ -88,7 +88,7 @@ backend/            FastAPI app
     auth.py           password hashing + signed token auth + admin flag sync
     adaptive.py        question selection + stopping logic
     scoring_v3.py      competency scoring + career ranking + reason generation
-    email_service.py  HTML email templates + SMTP sending
+    email_service.py  HTML email templates + Brevo API sending
     payments.py        Stripe + Paystack integration (deactivated by default)
 frontend/            React (Vite) app
   src/
@@ -131,7 +131,8 @@ Open the printed local URL (default `http://localhost:5173`).
 |---|---|
 | `SECRET_KEY` | Random secret signing auth tokens — generate your own for production (`python -c "import secrets; print(secrets.token_hex(32))"`) |
 | `ADMIN_EMAILS` | Comma-separated emails auto-granted admin access (`/admin` user list) on signup/login |
-| `SMTP_USER` / `SMTP_APP_PASSWORD` | Gmail address + [App Password](https://myaccount.google.com/apppasswords) used to send result emails |
+| `BREVO_API_KEY` | Free [Brevo](https://www.brevo.com/) transactional email API key used to send result emails — see "Email delivery" below for why SMTP was replaced |
+| `EMAIL_FROM_ADDRESS` | Sender address for result emails — must be a verified sender in your Brevo account |
 | `PAYMENTS_ENABLED` | `false` by default — set to `true` to re-enable the Stripe/Paystack checkout endpoints |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe test/live keys — get from the Stripe Dashboard |
 | `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | Paystack test/live keys |
@@ -139,11 +140,27 @@ Open the printed local URL (default `http://localhost:5173`).
 | `PORTFOLIO_URL` | Shown in the footer and emails |
 | `FRONTEND_URL` | Used to build Stripe/Paystack redirect + webhook links |
 
-The repo ships with `SMTP_USER`/`SMTP_APP_PASSWORD` already filled in `backend/.env`
-and **verified working** (SMTP over port 465/SSL). Paystack test keys are also
-filled in and verified working end-to-end. Stripe keys are still placeholders —
-replace `sk_test_replace_me` with real test (or live) keys before going live;
-no code changes are needed.
+### Email delivery: Brevo API, not SMTP
+
+Result emails are sent via [Brevo](https://www.brevo.com/)'s transactional
+email HTTP API (`POST https://api.brevo.com/v3/smtp/email`), not raw SMTP.
+This app originally used Gmail SMTP over port 465/SSL, and that works fine
+locally — but as of September 2025, Render blocks all outbound SMTP traffic
+(ports 25, 465, 587) on free web services, so emails silently never sent on
+the deployed backend even with correct, verified-working local credentials.
+Brevo's API rides over plain HTTPS (443), which is never blocked, and its
+free tier (300 emails/day, no card required) comfortably covers this app's
+volume.
+
+To set it up: create a free Brevo account, verify `EMAIL_FROM_ADDRESS` as a
+sender under Senders & IP, then generate an API key under SMTP & API and set
+it as `BREVO_API_KEY` both in `backend/.env` (local) and in the Render
+dashboard's environment variables for the backend service (it's `sync: false`
+in `render.yaml`, so Render never fills it in automatically).
+
+Paystack test keys are filled in and verified working end-to-end. Stripe keys
+are still placeholders — replace `sk_test_replace_me` with real test (or live)
+keys before going live; no code changes are needed.
 
 ## Accounts, admin, and payments
 
@@ -153,7 +170,7 @@ no code changes are needed.
   — no auth token involved anywhere in the respondent-facing flow.
 - Everyone who finishes sees their **top 4** recommended careers on-screen
   immediately, and gets them emailed in full detail (background task, so the
-  results page doesn't wait on the SMTP round trip).
+  results page doesn't wait on the email API round trip).
 - **Admin access** is the *only* thing behind a login, and it's not linked
   from the public nav — it's a plain email+password account (`/login`,
   reusing the same auth system) whose email is listed in the `ADMIN_EMAILS`
@@ -180,7 +197,7 @@ The repo includes a `render.yaml` Blueprint that provisions both services in one
    - `career-assessment-backend` — FastAPI, free web service
    - `career-assessment-frontend` — static site (Vite build), free
 4. Render will prompt you to fill in the env vars marked `sync: false` (secrets it won't
-   auto-generate): `SMTP_USER`, `SMTP_APP_PASSWORD`, `STRIPE_SECRET_KEY`,
+   auto-generate): `BREVO_API_KEY`, `STRIPE_SECRET_KEY`,
    `STRIPE_WEBHOOK_SECRET`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`,
    `CONSULTATION_BOOKING_URL`, and `DATABASE_URL` (see below).
 5. After the first deploy, confirm the actual URLs Render assigned (it may append a
@@ -253,7 +270,7 @@ Locally, `DATABASE_URL` is unset and the app falls back to SQLite (`backend/.env
 - Result emails, milky-themed, with reasons, entry-level caveats, and full
   curricula included, footer/portfolio link, and a profile photo — sent via a
   background task so the results page loads immediately instead of waiting
-  on the SMTP round trip
+  on the email API round trip
 - Going back to a previously answered question highlights your previous
   choice so you can review and change it, without breaking the adaptive flow
   going forward

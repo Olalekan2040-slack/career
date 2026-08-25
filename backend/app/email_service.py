@@ -6,12 +6,11 @@ visual theme. Every recommendation shown — in either tier — includes its
 full curriculum, resources, and the plain-language reason it was recommended.
 """
 
-import smtplib
-import ssl
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import requests
 
 from .config import settings
+
+BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 
 BRAND_CREAM = "#FBF8F3"
 BRAND_MILK = "#F3EEE4"
@@ -142,18 +141,23 @@ def render_recommendations_email(
 
 
 def send_email(to_email: str, subject: str, html_body: str) -> None:
-    if not settings.smtp_user or not settings.smtp_app_password:
-        print(f"[email_service] SMTP not configured — skipping send to {to_email} ({subject})")
+    if not settings.brevo_api_key:
+        print(f"[email_service] Brevo API key not configured — skipping send to {to_email} ({subject})")
         return
 
-    message = MIMEMultipart("alternative")
-    message["Subject"] = subject
-    message["From"] = f"{settings.email_from_name} <{settings.smtp_user}>"
-    message["To"] = to_email
-    message.attach(MIMEText(html_body, "html"))
-
-    app_password = settings.smtp_app_password.replace(" ", "")
-
-    with smtplib.SMTP_SSL(settings.smtp_host, 465, context=ssl.create_default_context()) as server:
-        server.login(settings.smtp_user, app_password)
-        server.sendmail(settings.smtp_user, [to_email], message.as_string())
+    response = requests.post(
+        BREVO_SEND_URL,
+        headers={
+            "api-key": settings.brevo_api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        json={
+            "sender": {"name": settings.email_from_name, "email": settings.email_from_address},
+            "to": [{"email": to_email}],
+            "subject": subject,
+            "htmlContent": html_body,
+        },
+        timeout=15,
+    )
+    response.raise_for_status()

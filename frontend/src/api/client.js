@@ -36,6 +36,7 @@ export const api = {
   getMeta: () => request('/api/meta'),
   getAdminUsers: () => request('/api/admin/users'),
   getAdminLeads: () => request('/api/admin/leads'),
+  getAdminAssessmentResults: () => request('/api/admin/assessment-results'),
   createLead: (payload) => request('/api/leads', { method: 'POST', body: JSON.stringify(payload) }),
   getQuestions: () => request('/api/questions'),
   getIntakeSchema: () => request('/api/assessment/intake-schema'),

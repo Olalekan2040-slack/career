@@ -201,3 +201,16 @@ class ConsultationOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AdminAssessmentResultOut(BaseModel):
+    """Schema for admin dashboard - includes lead info and recommendations"""
+    result_id: str
+    lead_name: str
+    lead_email: str
+    submitted_at: datetime
+    close_call: bool
+    recommendations: list[RecommendationOut]
+
+    class Config:
+        from_attributes = True

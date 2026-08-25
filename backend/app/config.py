@@ -8,11 +8,13 @@ class Settings(BaseSettings):
     environment: str = "development"
     secret_key: str = "dev-secret-change-me-in-production"
 
-    smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 465
-    smtp_user: str = ""
-    smtp_app_password: str = ""
     email_from_name: str = "Global Digital Skills Assessment"
+
+    # Brevo (formerly Sendinblue) transactional email HTTP API — used instead of
+    # SMTP because Render's free web services block outbound SMTP ports
+    # (25/465/587) as of Sep 2025, while HTTPS (443) is never blocked.
+    brevo_api_key: str = ""
+    email_from_address: str = "olalekanquadri58@gmail.com"
 
     # Payments are temporarily deactivated platform-wide — signup replaced the
     # $1 unlock tier. Flip to True to re-enable checkout without other changes.
