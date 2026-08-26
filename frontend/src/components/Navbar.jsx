@@ -27,18 +27,17 @@ export default function Navbar() {
         <Link to="/" style={{ fontWeight: 700, fontSize: 16, color: 'var(--ink)', textDecoration: 'none' }}>
           Digital Skills Assessment
         </Link>
-        {/* No public sign up/log in — everyone just takes the assessment via name+email.
-            This nav slot only ever shows anything for an already-logged-in admin session. */}
-        {!loading && user && user.is_admin && (
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 14 }}>
-            <Link to="/admin" style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 600 }}>
-              Admin
-            </Link>
+        {/* Admin dashboard — now publicly accessible */}
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 14 }}>
+          <Link to="/qeezara-admin" style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 600 }}>
+            Admin
+          </Link>
+          {!loading && user && (
             <button className="btn btn-outline" onClick={handleLogout} style={{ padding: '8px 16px' }}>
               Log out
             </button>
-          </nav>
-        )}
+          )}
+        </nav>
       </div>
     </header>
   );

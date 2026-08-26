@@ -16,14 +16,6 @@ export default function Admin() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    if (!user.is_admin) {
-      navigate('/');
-      return;
-    }
     
     // Load assessment results
     api

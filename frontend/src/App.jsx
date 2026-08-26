@@ -25,7 +25,7 @@ function App() {
               <Route path="/assessment" element={<Assessment />} />
               <Route path="/results/:resultId" element={<Results />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/qeezara-admin" element={<Admin />} />
             </Routes>
           </main>
           <Footer />
