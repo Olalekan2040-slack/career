@@ -22,9 +22,23 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Global Digital Skills Career Assessment API", version="2.0.0")
 
+# CORS configuration — allow frontend service to access API
+# In development: localhost:5173
+# In production (Render): frontend service URL from FRONTEND_URL env variable
+cors_origins = [
+    settings.frontend_url,  # Production frontend URL (from env)
+    "http://localhost:5173",  # Local development
+    "http://127.0.0.1:5173",  # Local development (loopback)
+]
+
+# In production, also allow requests with onrender.com domain (for Render deployments)
+if settings.is_production and "onrender.com" not in settings.frontend_url:
+    # Fallback for Render if FRONTEND_URL not properly set
+    cors_origins.append("*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
