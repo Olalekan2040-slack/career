@@ -27,11 +27,7 @@ export default function Navbar() {
         <Link to="/" style={{ fontWeight: 700, fontSize: 16, color: 'var(--ink)', textDecoration: 'none' }}>
           Digital Skills Assessment
         </Link>
-        {/* Admin dashboard — now publicly accessible */}
         <nav style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 14 }}>
-          <Link to="/qeezara-admin" style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 600 }}>
-            Admin
-          </Link>
           {!loading && user && (
             <button className="btn btn-outline" onClick={handleLogout} style={{ padding: '8px 16px' }}>
               Log out
