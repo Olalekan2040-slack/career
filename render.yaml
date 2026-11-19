@@ -18,7 +18,7 @@ services:
       - key: FRONTEND_URL
         value: https://career-assessment-frontend.onrender.com
       - key: DATABASE_URL
-        sync: false  # set to the Render Postgres Internal Database URL in the dashboard
+        value: sqlite:///./assessment.db
       - key: PAYMENTS_ENABLED
         value: false
       # Brevo transactional email API — Render's free web services block outbound
